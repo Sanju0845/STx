@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   FlatList,
   Image,
+  Appearance,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -75,6 +76,18 @@ export default function HomeScreen({ onNavigate }: Props) {
   const { data: recentWorks } = useRecentWorks();
   const { data: testimonials } = useTestimonials();
   const carouselRef = useRef<FlatList>(null);
+
+  // Theme detection
+  const [colorScheme, setColorScheme] = useState(Appearance.getColorScheme());
+
+  useEffect(() => {
+    const subscription = Appearance.addChangeListener(({ colorScheme }) => {
+      setColorScheme(colorScheme);
+    });
+    return () => subscription?.remove();
+  }, []);
+
+  const isDark = colorScheme === 'dark';
 
   // Pick expertise items (first 4 services for bento grid)
   const expertiseItems = services.slice(0, 4);
@@ -164,7 +177,10 @@ export default function HomeScreen({ onNavigate }: Props) {
       <View style={{ height: 340 }} />
 
         {/* Sheet panel */}
-        <View style={styles.sheetPanel}>
+        <View style={[styles.sheetPanel, {
+          borderTopWidth: 2,
+          borderTopColor: isDark ? '#FFFFFF' : '#E0E4E7'
+        }]}>
           {/* Drag handle */}
           <View style={styles.dragHandleWrap}>
             <View style={styles.dragHandle} />
@@ -402,7 +418,7 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   dragHandleWrap: { alignItems: 'center', paddingVertical: 8 },
-  dragHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: OUTLINE },
+  dragHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: '#8A8D9B' },
 
   /* Sections */
   section: { marginTop: 24, paddingHorizontal: 20 },
