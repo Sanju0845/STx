@@ -8,9 +8,39 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { FadeInUp, FadeIn } from '../components/Animations';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  Easing,
+} from 'react-native-reanimated';
 import type { Service, ServiceCategory } from '../lib/types';
 import { SERVICE_CATEGORY_LABELS } from '../lib/types';
+
+function FadeInSmall({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
+  const opacity = useSharedValue(0);
+  const translateY = useSharedValue(6);
+
+  React.useEffect(() => {
+    setTimeout(() => {
+      opacity.value = withTiming(1, {
+        duration: 220,
+        easing: Easing.out(Easing.quad),
+      });
+      translateY.value = withTiming(0, {
+        duration: 220,
+        easing: Easing.out(Easing.quad),
+      });
+    }, delay);
+  }, [opacity, translateY]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [{ translateY: translateY.value }],
+  }));
+
+  return <Animated.View style={animatedStyle}>{children}</Animated.View>;
+}
 
 /* ── Theme ──────────────────────────────────────── */
 const PRIMARY    = '#004CD2';
@@ -43,7 +73,7 @@ export default function ServiceDetailScreen({ service, onBack }: Props) {
   return (
     <View style={styles.container}>
       {/* ── Header ── */}
-      <FadeIn delay={0}>
+      <FadeInSmall delay={0}>
         <View style={styles.header}>
           <TouchableOpacity style={[styles.headerButton, styles.backBtn]} onPress={onBack} activeOpacity={0.7}>
             <Ionicons name="arrow-back" size={22} color={PRIMARY} />
@@ -53,11 +83,11 @@ export default function ServiceDetailScreen({ service, onBack }: Props) {
           </View>
           <View style={{ width: 44 }} />
         </View>
-      </FadeIn>
+      </FadeInSmall>
 
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* ── Hero ── */}
-        <FadeInUp delay={30}>
+        <FadeInSmall delay={50}>
           <View style={styles.hero}>
             {service.is_special ? (
               <LinearGradient colors={['#1B63FF', PRIMARY]} style={styles.heroGradient}>
@@ -76,10 +106,10 @@ export default function ServiceDetailScreen({ service, onBack }: Props) {
             <Text style={styles.title}>{service.title}</Text>
             <Text style={styles.description}>{service.description}</Text>
           </View>
-        </FadeInUp>
+        </FadeInSmall>
 
         {/* ── Price & Duration ── */}
-        <FadeInUp delay={100}>
+        <FadeInSmall delay={110}>
           <View style={styles.metaRow}>
             <View style={styles.metaCard}>
               <Ionicons name="time-outline" size={20} color={accent} />
@@ -96,11 +126,11 @@ export default function ServiceDetailScreen({ service, onBack }: Props) {
               </View>
             </View>
           </View>
-        </FadeInUp>
+        </FadeInSmall>
 
         {/* ── Features ── */}
         {service.features && service.features.length > 0 && (
-          <FadeInUp delay={170}>
+          <FadeInSmall delay={170}>
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>What's Included</Text>
               <View style={styles.featuresList}>
@@ -114,12 +144,12 @@ export default function ServiceDetailScreen({ service, onBack }: Props) {
                 ))}
               </View>
             </View>
-          </FadeInUp>
+          </FadeInSmall>
         )}
 
         {/* ── Tech Stack ── */}
         {service.tech_stack && service.tech_stack.length > 0 && (
-          <FadeInUp delay={240}>
+          <FadeInSmall delay={230}>
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Tech Stack</Text>
               <View style={styles.techRow}>
@@ -130,11 +160,11 @@ export default function ServiceDetailScreen({ service, onBack }: Props) {
                 ))}
               </View>
             </View>
-          </FadeInUp>
+          </FadeInSmall>
         )}
 
         {/* ── CTA ── */}
-        <FadeInUp delay={310}>
+        <FadeInSmall delay={290}>
           <View style={styles.ctaSection}>
             <TouchableOpacity activeOpacity={0.8}>
               <LinearGradient colors={service.is_special ? ['#1B63FF', PRIMARY] : [PRIMARY, '#1B63FF']} style={styles.ctaBtn}>
@@ -143,7 +173,7 @@ export default function ServiceDetailScreen({ service, onBack }: Props) {
               </LinearGradient>
             </TouchableOpacity>
           </View>
-        </FadeInUp>
+        </FadeInSmall>
 
         <View style={{ height: 120 }} />
       </ScrollView>

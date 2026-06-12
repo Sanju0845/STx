@@ -9,7 +9,12 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { FadeInUp, FadeIn, ScaleIn } from '../components/Animations';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  Easing,
+} from 'react-native-reanimated';
 import { useServices, useTestimonials } from '../lib/useData';
 import type { Service, ServiceCategory } from '../lib/types';
 import { SERVICE_CATEGORY_LABELS } from '../lib/types';
@@ -41,6 +46,31 @@ interface Props {
   onServiceSelect: (service: Service) => void;
 }
 
+function FadeInSmall({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
+  const opacity = useSharedValue(0);
+  const translateY = useSharedValue(6);
+
+  React.useEffect(() => {
+    setTimeout(() => {
+      opacity.value = withTiming(1, {
+        duration: 220,
+        easing: Easing.out(Easing.quad),
+      });
+      translateY.value = withTiming(0, {
+        duration: 220,
+        easing: Easing.out(Easing.quad),
+      });
+    }, delay);
+  }, [opacity, translateY]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [{ translateY: translateY.value }],
+  }));
+
+  return <Animated.View style={animatedStyle}>{children}</Animated.View>;
+}
+
 export default function ServicesScreen({ onServiceSelect }: Props) {
   const [activeFilter, setActiveFilter] = useState('All Services');
   const { data: services } = useServices();
@@ -49,7 +79,7 @@ export default function ServicesScreen({ onServiceSelect }: Props) {
   return (
     <View style={styles.container}>
       {/* ── Header ── */}
-      <FadeIn delay={0} duration={300}>
+      <FadeInSmall delay={0}>
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <Text style={styles.brand}>Visionary Agency</Text>
@@ -63,116 +93,115 @@ export default function ServicesScreen({ onServiceSelect }: Props) {
             </TouchableOpacity>
           </View>
         </View>
-      </FadeIn>
+      </FadeInSmall>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
         {/* ── Title Section ── */}
         <View style={styles.titleSection}>
-        <FadeInUp delay={30}>
-          <Text style={styles.pageTitle}>Our Services</Text>
-        </FadeInUp>
-        <FadeInUp delay={70}>
-          <Text style={styles.pageSub}>Tailored digital solutions for visionary teams.</Text>
-        </FadeInUp>
-      </View>
-
-      {/* ── Search ── */}
-      <FadeInUp delay={110}>
-        <View style={styles.searchWrap}>
-          <Ionicons name="search-outline" size={18} color={OUTLINE} style={styles.searchIcon} />
-          <Text style={styles.searchPlaceholder}>Search services...</Text>
+          <FadeInSmall delay={50}>
+            <Text style={styles.pageTitle}>Our Services</Text>
+          </FadeInSmall>
+          <FadeInSmall delay={80}>
+            <Text style={styles.pageSub}>Tailored digital solutions for visionary teams.</Text>
+          </FadeInSmall>
         </View>
-      </FadeInUp>
 
-      {/* ── Filter Chips ── */}
-      <FadeInUp delay={150}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
-          {FILTERS.map((f, i) => {
-            const active = activeFilter === f;
-            return (
-              <ScaleIn key={f} delay={180 + i * 30}>
+        {/* ── Search ── */}
+        <FadeInSmall delay={110}>
+          <View style={styles.searchWrap}>
+            <Ionicons name="search-outline" size={18} color={OUTLINE} style={styles.searchIcon} />
+            <Text style={styles.searchPlaceholder}>Search services...</Text>
+          </View>
+        </FadeInSmall>
+
+        {/* ── Filter Chips ── */}
+        <FadeInSmall delay={140}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
+            {FILTERS.map((f, i) => {
+              const active = activeFilter === f;
+              return (
                 <TouchableOpacity
+                  key={f}
                   style={[styles.chip, active && styles.chipActive]}
                   onPress={() => setActiveFilter(f)}
                   activeOpacity={0.7}
                 >
                   <Text style={[styles.chipText, active && styles.chipTextActive]}>{f}</Text>
                 </TouchableOpacity>
-              </ScaleIn>
-            );
-          })}
-        </ScrollView>
-      </FadeInUp>
+              );
+            })}
+          </ScrollView>
+        </FadeInSmall>
 
-      {/* ── Service Cards Grid ── */}
-      <View style={styles.grid}>
-        {services.map((svc, index) => {
-          const accent = CAT_COLORS[svc.category];
-          const categoryLabel = SERVICE_CATEGORY_LABELS[svc.category];
-          
-          return (
-            <FadeInUp key={svc.id} delay={230 + index * 70}>
-              <TouchableOpacity 
-                style={styles.serviceCard} 
-                activeOpacity={0.92}
-                onPress={() => onServiceSelect(svc)}
-              >
-                {/* Image / Hero area */}
-                {svc.is_special ? (
-                  <LinearGradient colors={['#1B63FF', PRIMARY]} style={styles.cardImg}>
-                    <View style={styles.specialOverlay}>
-                      <Ionicons name={(svc.icon_name || 'cube-outline') as any} size={40} color="#fff" />
-                      <Text style={styles.specialTitle}>{svc.title}</Text>
-                    </View>
-                    <View style={[styles.catBadge, { backgroundColor: 'rgba(255,255,255,0.2)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' }]}>
-                      <Text style={[styles.catBadgeText, { color: '#fff' }]}>{categoryLabel.toUpperCase()}</Text>
-                    </View>
-                  </LinearGradient>
-                ) : svc.image_url ? (
-                  <View style={styles.cardImgWrap}>
-                    <Image
-                      source={{ uri: svc.image_url }}
-                      style={styles.cardImg}
-                      resizeMode="cover"
-                    />
-                    <View style={styles.imgOverlay} />
-                    <View style={[styles.catBadge, { backgroundColor: accent + 'E6' }]}>
-                      <Text style={styles.catBadgeText}>{categoryLabel.toUpperCase()}</Text>
-                    </View>
-                  </View>
-                ) : (
-                  <View style={[styles.cardImg, { backgroundColor: accent + '18', alignItems: 'center', justifyContent: 'center' }]}>
-                    <Ionicons name={(svc.icon_name || 'cube-outline') as any} size={48} color={accent} />
-                    <View style={[styles.catBadge, { backgroundColor: accent + 'E6' }]}>
-                      <Text style={styles.catBadgeText}>{categoryLabel.toUpperCase()}</Text>
-                    </View>
-                  </View>
-                )}
-
-                {/* Content */}
-                <View style={styles.cardBody}>
-                  <Text style={styles.cardTitle}>{svc.title}</Text>
-                  <Text style={styles.cardDesc} numberOfLines={2}>{svc.description}</Text>
-                  <View style={styles.cardMeta}>
-                    <View style={styles.metaGroup}>
-                      <View style={styles.metaItem}>
-                        <Ionicons name="time-outline" size={14} color={TEXT2} />
-                        <Text style={styles.metaText}>{svc.duration || 'Custom'}</Text>
+        {/* ── Service Cards Grid ── */}
+        <View style={styles.grid}>
+          {services.map((svc, index) => {
+            const accent = CAT_COLORS[svc.category];
+            const categoryLabel = SERVICE_CATEGORY_LABELS[svc.category];
+            
+            return (
+              <FadeInSmall key={svc.id} delay={170 + index * 40}>
+                <TouchableOpacity 
+                  style={styles.serviceCard} 
+                  activeOpacity={0.92}
+                  onPress={() => onServiceSelect(svc)}
+                >
+                  {/* Image / Hero area */}
+                  {svc.is_special ? (
+                    <LinearGradient colors={['#1B63FF', PRIMARY]} style={styles.cardImg}>
+                      <View style={styles.specialOverlay}>
+                        <Ionicons name={(svc.icon_name || 'cube-outline') as any} size={40} color="#fff" />
+                        <Text style={styles.specialTitle}>{svc.title}</Text>
+                      </View>
+                      <View style={[styles.catBadge, { backgroundColor: 'rgba(255,255,255,0.2)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' }]}>
+                        <Text style={[styles.catBadgeText, { color: '#fff' }]}>{categoryLabel.toUpperCase()}</Text>
+                      </View>
+                    </LinearGradient>
+                  ) : svc.image_url ? (
+                    <View style={styles.cardImgWrap}>
+                      <Image
+                        source={{ uri: svc.image_url }}
+                        style={styles.cardImg}
+                        resizeMode="cover"
+                      />
+                      <View style={styles.imgOverlay} />
+                      <View style={[styles.catBadge, { backgroundColor: accent + 'E6' }]}>
+                        <Text style={styles.catBadgeText}>{categoryLabel.toUpperCase()}</Text>
                       </View>
                     </View>
-                    <View style={styles.priceWrap}>
-                      <Text style={styles.cardPrice}>₹{svc.price_start.toLocaleString()}</Text>
-                      <Text style={styles.priceSuffix}>onwards</Text>
+                  ) : (
+                    <View style={[styles.cardImg, { backgroundColor: accent + '18', alignItems: 'center', justifyContent: 'center' }]}>
+                      <Ionicons name={(svc.icon_name || 'cube-outline') as any} size={48} color={accent} />
+                      <View style={[styles.catBadge, { backgroundColor: accent + 'E6' }]}>
+                        <Text style={styles.catBadgeText}>{categoryLabel.toUpperCase()}</Text>
+                      </View>
+                    </View>
+                  )}
+
+                  {/* Content */}
+                  <View style={styles.cardBody}>
+                    <Text style={styles.cardTitle}>{svc.title}</Text>
+                    <Text style={styles.cardDesc} numberOfLines={2}>{svc.description}</Text>
+                    <View style={styles.cardMeta}>
+                      <View style={styles.metaGroup}>
+                        <View style={styles.metaItem}>
+                          <Ionicons name="time-outline" size={14} color={TEXT2} />
+                          <Text style={styles.metaText}>{svc.duration || 'Custom'}</Text>
+                        </View>
+                      </View>
+                      <View style={styles.priceWrap}>
+                        <Text style={styles.cardPrice}>₹{svc.price_start.toLocaleString()}</Text>
+                        <Text style={styles.priceSuffix}>onwards</Text>
+                      </View>
                     </View>
                   </View>
-                </View>
-              </TouchableOpacity>
-            </FadeInUp>
-          );
-        })}
-      </View>
+                </TouchableOpacity>
+              </FadeInSmall>
+            );
+          })}
+        </View>
 
-      <View style={{ height: 140 }} />
+        <View style={{ height: 140 }} />
       </ScrollView>
     </View>
   );

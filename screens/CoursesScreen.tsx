@@ -10,7 +10,12 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { FadeInUp, FadeIn, ScaleIn } from '../components/Animations';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  Easing,
+} from 'react-native-reanimated';
 import { useCourses, useTestimonials } from '../lib/useData';
 import type { Course, CourseCategory } from '../lib/types';
 import { COURSE_CATEGORY_LABELS } from '../lib/types';
@@ -25,7 +30,7 @@ const OUTLINE    = '#C3C5D8';
 const SURF_LOW   = '#F2F4F6';
 const TER_CONT   = '#627289';
 
-const CAT_COLORS: Record<CourseCategory, string> = {
+const CAT_COLORS: Record<string, string> = {
   ui_ux: PRIMARY,
   web_dev: TER_CONT,
   mobile_app: '#38485D',
@@ -33,6 +38,31 @@ const CAT_COLORS: Record<CourseCategory, string> = {
 };
 
 const FILTERS = ['All Courses', 'UI/UX Design', 'Web Dev', 'Mobile App', 'Specialized'];
+
+function FadeInSmall({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
+  const opacity = useSharedValue(0);
+  const translateY = useSharedValue(6);
+
+  React.useEffect(() => {
+    setTimeout(() => {
+      opacity.value = withTiming(1, {
+        duration: 220,
+        easing: Easing.out(Easing.quad),
+      });
+      translateY.value = withTiming(0, {
+        duration: 220,
+        easing: Easing.out(Easing.quad),
+      });
+    }, delay);
+  }, [opacity, translateY]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [{ translateY: translateY.value }],
+  }));
+
+  return <Animated.View style={animatedStyle}>{children}</Animated.View>;
+}
 
 export default function CoursesScreen() {
   const [activeFilter, setActiveFilter] = useState('All Courses');
@@ -43,7 +73,7 @@ export default function CoursesScreen() {
   return (
     <View style={styles.container}>
       {/* ── Header ── */}
-      <FadeIn delay={0} duration={300}>
+      <FadeInSmall delay={0}>
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <Text style={styles.brand}>Visionary Agency</Text>
@@ -57,117 +87,112 @@ export default function CoursesScreen() {
             </TouchableOpacity>
           </View>
         </View>
-      </FadeIn>
+      </FadeInSmall>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
         {/* ── Title Section ── */}
         <View style={styles.titleSection}>
-        <FadeInUp delay={40}>
-          <Text style={styles.pageTitle}>Master Your Craft</Text>
-        </FadeInUp>
-        <FadeInUp delay={80}>
-          <Text style={styles.pageSub}>Expert-led courses for digital visionary leaders.</Text>
-        </FadeInUp>
-      </View>
-
-      {/* ── Search ── */}
-      <FadeInUp delay={120}>
-        <View style={styles.searchWrap}>
-          <Ionicons name="search-outline" size={18} color={OUTLINE} style={styles.searchIcon} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search courses..."
-            placeholderTextColor={OUTLINE}
-            value={search}
-            onChangeText={setSearch}
-          />
+          <FadeInSmall delay={50}>
+            <Text style={styles.pageTitle}>Master Your Craft</Text>
+          </FadeInSmall>
+          <FadeInSmall delay={80}>
+            <Text style={styles.pageSub}>Expert-led courses for digital visionary leaders.</Text>
+          </FadeInSmall>
         </View>
-      </FadeInUp>
 
-      {/* ── Filter Chips ── */}
-      <FadeInUp delay={160}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
-          {FILTERS.map((f, i) => {
-            const active = activeFilter === f;
-            return (
-              <ScaleIn key={f} delay={190 + i * 30}>
+        {/* ── Search ── */}
+        <FadeInSmall delay={110}>
+          <View style={styles.searchWrap}>
+            <Ionicons name="search-outline" size={18} color={OUTLINE} style={styles.searchIcon} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search courses..."
+              placeholderTextColor={OUTLINE}
+              value={search}
+              onChangeText={setSearch}
+            />
+          </View>
+        </FadeInSmall>
+
+        {/* ── Filter Chips ── */}
+        <FadeInSmall delay={140}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
+            {FILTERS.map((f, i) => {
+              const active = activeFilter === f;
+              return (
                 <TouchableOpacity
+                  key={f}
                   style={[styles.chip, active && styles.chipActive]}
                   onPress={() => setActiveFilter(f)}
                   activeOpacity={0.7}
                 >
                   <Text style={[styles.chipText, active && styles.chipTextActive]}>{f}</Text>
                 </TouchableOpacity>
-              </ScaleIn>
+              );
+            })}
+          </ScrollView>
+        </FadeInSmall>
+
+        {/* ── Course Cards ── */}
+        <View style={styles.grid}>
+          {courses.map((course, index) => {
+            const accent = course.category ? CAT_COLORS[course.category] : PRIMARY;
+            const categoryLabel = course.category || 'Course';
+            const gradColor1 = course.grad_color_1 || PRIMARY;
+            const gradColor2 = course.grad_color_2 || '#003399';
+            
+            return (
+              <FadeInSmall key={course.id} delay={170 + index * 40}>
+                <TouchableOpacity style={styles.courseCard} activeOpacity={0.92}>
+                  {/* Image area */}
+                  {course.is_special ? (
+                    <LinearGradient colors={[gradColor1, gradColor2]} style={styles.courseImg}>
+                      <View style={styles.specialOverlay}>
+                        <Ionicons name={(course.icon_name || 'cube-outline') as any} size={40} color="#fff" />
+                        <Text style={styles.specialTitle}>{course.title}</Text>
+                      </View>
+                      <View style={[styles.catBadge, { backgroundColor: 'rgba(255,255,255,0.2)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' }]}>
+                        <Text style={[styles.catBadgeText, { color: '#fff' }]}>{categoryLabel.toUpperCase()}</Text>
+                      </View>
+                    </LinearGradient>
+                  ) : (
+                    <LinearGradient colors={[gradColor1, gradColor2]} style={styles.courseImg}>
+                      <Ionicons name={(course.icon_name || 'cube-outline') as any} size={48} color={accent + '40'} />
+                      <View style={[styles.catBadge, { backgroundColor: accent + 'E6' }]}>
+                        <Text style={[styles.catBadgeText, { color: '#fff' }]}>{categoryLabel.toUpperCase()}</Text>
+                      </View>
+                    </LinearGradient>
+                  )}
+
+                  {/* Content */}
+                  <View style={styles.courseBody}>
+                    <Text style={styles.courseTitle}>{course.title}</Text>
+                    <Text style={styles.courseDesc} numberOfLines={2}>{course.description}</Text>
+                    <View style={styles.courseMeta}>
+                      <View style={styles.metaGroup}>
+                        <View style={styles.metaItem}>
+                          <Ionicons name="time-outline" size={14} color={TEXT2} />
+                          <Text style={styles.metaText}>{course.duration || 'Self-paced'}</Text>
+                        </View>
+                      </View>
+                      <Text style={styles.coursePrice}>₹{course.price.toLocaleString()}</Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              </FadeInSmall>
             );
           })}
-        </ScrollView>
-      </FadeInUp>
-
-      {/* ── Course Cards ── */}
-      <View style={styles.grid}>
-        {courses.map((course, index) => {
-          const accent = CAT_COLORS[course.category];
-          const categoryLabel = COURSE_CATEGORY_LABELS[course.category];
-          
-          return (
-            <FadeInUp key={course.id} delay={250 + index * 70}>
-              <TouchableOpacity style={styles.courseCard} activeOpacity={0.92}>
-                {/* Image area */}
-                {course.is_special ? (
-                  <LinearGradient colors={[course.grad_color_1, course.grad_color_2]} style={styles.courseImg}>
-                    <View style={styles.specialOverlay}>
-                      <Ionicons name={(course.icon_name || 'cube-outline') as any} size={40} color="#fff" />
-                      <Text style={styles.specialTitle}>{course.title}</Text>
-                    </View>
-                    <View style={[styles.catBadge, { backgroundColor: 'rgba(255,255,255,0.2)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' }]}>
-                      <Text style={[styles.catBadgeText, { color: '#fff' }]}>{categoryLabel.toUpperCase()}</Text>
-                    </View>
-                  </LinearGradient>
-                ) : (
-                  <LinearGradient colors={[course.grad_color_1, course.grad_color_2]} style={styles.courseImg}>
-                    <Ionicons name={(course.icon_name || 'cube-outline') as any} size={48} color={accent + '40'} />
-                    <View style={[styles.catBadge, { backgroundColor: accent + 'E6' }]}>
-                      <Text style={[styles.catBadgeText, { color: '#fff' }]}>{categoryLabel.toUpperCase()}</Text>
-                    </View>
-                  </LinearGradient>
-                )}
-
-                {/* Content */}
-                <View style={styles.courseBody}>
-                  <Text style={styles.courseTitle}>{course.title}</Text>
-                  <Text style={styles.courseDesc} numberOfLines={2}>{course.description}</Text>
-                  <View style={styles.courseMeta}>
-                    <View style={styles.metaGroup}>
-                      <View style={styles.metaItem}>
-                        <Ionicons name="time-outline" size={14} color={TEXT2} />
-                        <Text style={styles.metaText}>{course.duration || 'Self-paced'}</Text>
-                      </View>
-                      {course.students_count ? (
-                        <View style={styles.metaItem}>
-                          <Ionicons name="people-outline" size={14} color={TEXT2} />
-                          <Text style={styles.metaText}>{course.students_count}</Text>
-                        </View>
-                      ) : null}
-                    </View>
-                    <Text style={styles.coursePrice}>₹{course.price.toLocaleString()}</Text>
-                  </View>
-                </View>
-              </TouchableOpacity>
-            </FadeInUp>
-          );
-        })}
-      </View>
+        </View>
 
       {/* ── Testimonials ── */}
       {testimonials.length > 0 && (
-        <FadeInUp delay={450}>
+        <FadeInSmall delay={450}>
           <View style={styles.testimonialsSection}>
             <Text style={styles.sectionTitle}>What Students Say</Text>
             <Text style={styles.sectionSub}>Success stories from our learners</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.testimonialRow}>
               {testimonials.map((testimonial, idx) => (
-                <ScaleIn key={testimonial.id} delay={480 + idx * 40}>
+                <FadeInSmall key={testimonial.id} delay={480 + idx * 40}>
                   <View style={styles.testimonialCard}>
                     <View style={styles.testimonialHeader}>
                       <View style={styles.testimonialAvatar}>
@@ -192,11 +217,11 @@ export default function CoursesScreen() {
                       ))}
                     </View>
                   </View>
-                </ScaleIn>
+                </FadeInSmall>
               ))}
             </ScrollView>
           </View>
-        </FadeInUp>
+        </FadeInSmall>
       )}
 
       <View style={{ height: 140 }} />

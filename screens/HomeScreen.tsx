@@ -10,8 +10,13 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  Easing,
+} from 'react-native-reanimated';
 import type { TabKey } from '../lib/types';
-import { FadeInUp, FadeIn, ScaleIn } from '../components/Animations';
 import { useServices, useRecentWorks, useTestimonials } from '../lib/useData';
 
 /* ── Theme ──────────────────────────────────────── */
@@ -39,6 +44,31 @@ const CAT_COLORS: Record<string, string> = {
   ui_ux: '#565E74',
   courses: '#565E74',
 };
+
+function FadeInSmall({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
+  const opacity = useSharedValue(0);
+  const translateY = useSharedValue(6);
+
+  React.useEffect(() => {
+    setTimeout(() => {
+      opacity.value = withTiming(1, {
+        duration: 220,
+        easing: Easing.out(Easing.quad),
+      });
+      translateY.value = withTiming(0, {
+        duration: 220,
+        easing: Easing.out(Easing.quad),
+      });
+    }, delay);
+  }, [opacity, translateY]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [{ translateY: translateY.value }],
+  }));
+
+  return <Animated.View style={animatedStyle}>{children}</Animated.View>;
+}
 
 export default function HomeScreen({ onNavigate }: Props) {
   const { data: services } = useServices();
@@ -76,7 +106,7 @@ export default function HomeScreen({ onNavigate }: Props) {
   return (
     <View style={styles.container}>
       {/* ── Header (above everything) ── */}
-      <FadeIn delay={0} duration={200}>
+      <FadeInSmall delay={0}>
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <Text style={styles.brand}>Visionary Agency</Text>
@@ -85,30 +115,30 @@ export default function HomeScreen({ onNavigate }: Props) {
             <Ionicons name="notifications-outline" size={22} color={PRIMARY} />
           </TouchableOpacity>
         </View>
-      </FadeIn>
+      </FadeInSmall>
 
       {/* ── Hero (pinned behind, fills remaining space) ── */}
       <View style={StyleSheet.absoluteFillObject}>
         <View style={{ paddingTop: 70, flex: 1 }}>
           <View style={styles.hero}>
-            <ScaleIn delay={30}>
+            <FadeInSmall delay={30}>
               <View style={styles.badge}>
                 <Ionicons name="sparkles" size={14} color={TEXT2} />
                 <Text style={styles.badgeText}>The Future of Digital Strategy</Text>
               </View>
-            </ScaleIn>
-            <FadeInUp delay={60}>
+            </FadeInSmall>
+            <FadeInSmall delay={60}>
               <Text style={styles.heroTitle}>
                 Transforming Ideas into{' '}
                 <Text style={{ color: PRIMARY, fontStyle: 'italic' }}>Digital Reality</Text>
               </Text>
-            </FadeInUp>
-            <FadeInUp delay={110}>
+            </FadeInSmall>
+            <FadeInSmall delay={110}>
               <Text style={styles.heroSub}>
                 We craft bespoke digital experiences that bridge the gap between human ambition and technological capability.
               </Text>
-            </FadeInUp>
-            <FadeInUp delay={160}>
+            </FadeInSmall>
+            <FadeInSmall delay={160}>
               <View style={styles.heroBtns}>
                 <TouchableOpacity activeOpacity={0.8} onPress={() => onNavigate('Services')}>
                   <LinearGradient colors={[PRIMARY, '#1B63FF']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.heroBtnPrimary}>
@@ -119,7 +149,7 @@ export default function HomeScreen({ onNavigate }: Props) {
                   <Text style={styles.heroBtnSecText}>View Portfolio</Text>
                 </TouchableOpacity>
               </View>
-            </FadeInUp>
+            </FadeInSmall>
           </View>
         </View>
       </View>
@@ -141,7 +171,7 @@ export default function HomeScreen({ onNavigate }: Props) {
           </View>
 
           {/* ── Our Expertise ── */}
-          <FadeInUp delay={200}>
+          <FadeInSmall delay={200}>
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
                 <View>
@@ -154,29 +184,29 @@ export default function HomeScreen({ onNavigate }: Props) {
               </View>
 
               {/* Bento grid */}
-              <FadeInUp delay={250}>
+              <FadeInSmall delay={250}>
                 <View style={styles.bentoRow}>
                   <ExpertiseCard item={expertItems[0] || fallbackExpertise[0]} large />
                   <ExpertiseCard item={expertItems[1] || fallbackExpertise[1]} />
                 </View>
-              </FadeInUp>
-              <FadeInUp delay={290}>
+              </FadeInSmall>
+              <FadeInSmall delay={290}>
                 <View style={styles.bentoRow}>
                   <ExpertiseCard item={expertItems[2] || fallbackExpertise[2]} />
                   <ExpertiseCard item={expertItems[3] || fallbackExpertise[3]} large />
                 </View>
-              </FadeInUp>
+              </FadeInSmall>
             </View>
-          </FadeInUp>
+          </FadeInSmall>
 
           {/* ── Testimonials ── */}
-          <FadeInUp delay={340}>
+          <FadeInSmall delay={340}>
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>What Clients Say</Text>
               <Text style={styles.sectionSub}>Trusted by visionary teams</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.testimonialRow}>
                 {reviews.map((t, i) => (
-                  <ScaleIn key={t.id} delay={380 + i * 50}>
+                  <FadeInSmall key={t.id} delay={380 + i * 50}>
                     <View style={styles.testimonialCard}>
                       <View style={styles.testimonialHeader}>
                         <View style={styles.testimonialAvatar}>
@@ -201,14 +231,14 @@ export default function HomeScreen({ onNavigate }: Props) {
                         ))}
                       </View>
                     </View>
-                  </ScaleIn>
+                  </FadeInSmall>
                 ))}
               </ScrollView>
             </View>
-          </FadeInUp>
+          </FadeInSmall>
 
           {/* ── Recent Work ── */}
-          <FadeInUp delay={440}>
+          <FadeInSmall delay={440}>
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
                 <View>
@@ -241,30 +271,41 @@ export default function HomeScreen({ onNavigate }: Props) {
                 contentContainerStyle={{ gap: 14, paddingHorizontal: 4 }}
                 data={projects}
                 keyExtractor={(item) => item.id}
-                renderItem={({ item, index }) => (
-                  <FadeInUp delay={480 + index * 50}>
-                    <View style={styles.projectCard}>
-                      <LinearGradient
-                        colors={[item.color_hex + '30', item.color_hex + '10']}
-                        style={styles.projectImg}
-                      >
-                        <Ionicons name="image-outline" size={48} color={item.color_hex + '60'} />
-                      </LinearGradient>
-                      <Text style={styles.projectCat}>{item.category}</Text>
-                      <Text style={styles.projectTitle}>{item.title}</Text>
-                    </View>
-                  </FadeInUp>
-                )}
+                renderItem={({ item, index }) => {
+                  const color = item.color_hex || PRIMARY;
+                  return (
+                    <FadeInSmall key={item.id} delay={480 + index * 50}>
+                      <View style={styles.projectCard}>
+                        {item.image_url ? (
+                          <Image
+                            source={{ uri: item.image_url }}
+                            style={styles.projectImg}
+                            resizeMode="cover"
+                          />
+                        ) : (
+                          <LinearGradient
+                            colors={[color + '30', color + '10']}
+                            style={styles.projectImg}
+                          >
+                            <Ionicons name="image-outline" size={48} color={color + '60'} />
+                          </LinearGradient>
+                        )}
+                        <Text style={styles.projectCat}>{item.category}</Text>
+                        <Text style={styles.projectTitle}>{item.title}</Text>
+                      </View>
+                    </FadeInSmall>
+                  );
+                }}
               />
             </View>
-          </FadeInUp>
+          </FadeInSmall>
 
           {/* ── Footer ── */}
-          <FadeIn delay={580}>
+          <FadeInSmall delay={580}>
             <View style={styles.footer}>
               <Text style={styles.footerText}>© 2024 Visionary Agency</Text>
             </View>
-          </FadeIn>
+          </FadeInSmall>
 
           <View style={{ height: 120 }} />
         </View>

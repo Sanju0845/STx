@@ -10,13 +10,14 @@ export type ServiceCategory =
   | 'courses'
   | 'ui_ux';
 
-export type CourseCategory = 'ui_ux' | 'web_dev' | 'mobile_app' | 'specialized';
+export type CourseCategory = string;
 
 export interface Profile {
   id: string;
   full_name: string | null;
   avatar_url: string | null;
   phone: string | null;
+  is_active: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -33,11 +34,13 @@ export interface Service {
   icon_name: string | null;
   features: string[];
   tech_stack: string[];
-  is_special: boolean;
   is_active: boolean;
   sort_order: number;
   created_at: string;
+  is_special?: boolean;
 }
+
+export const COURSE_CATEGORY_LABELS: Record<string, string> = {};
 
 export interface RecentWork {
   id: string;
@@ -45,7 +48,7 @@ export interface RecentWork {
   category: string;
   image_url: string | null;
   description: string | null;
-  color_hex: string;
+  color_hex: string | null;
   is_active: boolean;
   sort_order: number;
   created_at: string;
@@ -66,15 +69,15 @@ export interface Testimonial {
 export interface Course {
   id: string;
   title: string;
-  description: string;
-  category: CourseCategory;
+  description: string | null;
+  category: CourseCategory | null;
   price: number;
   duration: string | null;
-  students_count: string | null;
+  students_count: number;
   image_url: string | null;
   icon_name: string | null;
-  grad_color_1: string;
-  grad_color_2: string;
+  grad_color_1: string | null;
+  grad_color_2: string | null;
   is_special: boolean;
   is_active: boolean;
   sort_order: number;
@@ -94,11 +97,4 @@ export const SERVICE_CATEGORY_LABELS: Record<ServiceCategory, string> = {
   java_proxy: 'Java Proxy',
   courses: 'Courses',
   ui_ux: 'UI/UX Design',
-};
-
-export const COURSE_CATEGORY_LABELS: Record<CourseCategory, string> = {
-  ui_ux: 'UI/UX Design',
-  web_dev: 'Web Development',
-  mobile_app: 'Mobile App',
-  specialized: 'Specialized',
 };
