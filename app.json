@@ -20,7 +20,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "jsEngine": "jsc",
+      "jsEngine": "hermes",
       "ndkVersion": "26.1.10909125"
     },
     "extra": {
