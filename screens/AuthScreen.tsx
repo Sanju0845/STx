@@ -1,251 +1,370 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   TextInput,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Image,
+  StatusBar,
+  Dimensions,
+  Modal,
+  TouchableWithoutFeedback,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
-  withSpring,
   withTiming,
-  interpolate,
+  withSequence,
+  Easing,
+  runOnJS,
 } from 'react-native-reanimated';
-import { Ionicons } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../lib/useAuth';
+import { useTheme } from '../lib/ThemeContext';
 
-const PRIMARY = '#004CD2';
-const BG = '#F7F9FB';
-const SURFACE = '#FFFFFF';
-const ON_SURFACE = '#191C1E';
-const TEXT2 = '#5F6368';
-const OUTLINE = '#DADCE0';
+const { width } = Dimensions.get('window');
 
 type AuthMode = 'login' | 'signup';
 
 interface AuthScreenProps {
   onSuccess: () => void;
+  onBack: () => void;
 }
 
-export default function AuthScreen({ onSuccess }: AuthScreenProps) {
+export default function AuthScreen({ onSuccess, onBack }: AuthScreenProps) {
   const [mode, setMode] = useState<AuthMode>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [showPopup, setShowPopup] = useState(false);
+  const [popupMessage, setPopupMessage] = useState('');
 
   const { signIn, signUp } = useAuth();
+  const { theme } = useTheme();
 
-  const slideAnim = useSharedValue(0);
-  const fadeAnim = useSharedValue(1);
+  const opacity = useSharedValue(1);
+  const translateX = useSharedValue(0);
+  const termsShake = useSharedValue(0);
+
+  // Load saved credentials on component mount
+  useEffect(() => {
+    const loadSavedCredentials = async () => {
+      try {
+        const savedEmail = await AsyncStorage.getItem('savedEmail');
+        const savedRememberMe = await AsyncStorage.getItem('rememberMe');
+        
+        if (savedEmail && savedRememberMe === 'true') {
+          setEmail(savedEmail);
+          setRememberMe(true);
+        }
+      } catch (error) {
+        console.error('Error loading saved credentials:', error);
+      }
+    };
+    
+    loadSavedCredentials();
+  }, []);
+
+  // Save or remove credentials when rememberMe changes or on login
+  const saveCredentials = async (emailToSave: string) => {
+    try {
+      if (rememberMe) {
+        await AsyncStorage.setItem('savedEmail', emailToSave);
+        await AsyncStorage.setItem('rememberMe', 'true');
+      } else {
+        await AsyncStorage.removeItem('savedEmail');
+        await AsyncStorage.setItem('rememberMe', 'false');
+      }
+    } catch (error) {
+      console.error('Error saving credentials:', error);
+    }
+  };
 
   const handleSubmit = async () => {
+    // Validate inputs
     if (!email || !password) {
-      Alert.alert('Error', 'Please fill in all fields');
+      setPopupMessage('Please fill in all fields');
+      setShowPopup(true);
       return;
     }
 
-    if (mode === 'signup' && !fullName) {
-      Alert.alert('Error', 'Please enter your name');
-      return;
+    if (mode === 'signup') {
+      if (!fullName) {
+        setPopupMessage('Please enter your full name');
+        setShowPopup(true);
+        return;
+      }
+      if (!termsAccepted) {
+        // Shake the terms block
+        termsShake.value = withSequence(
+          withTiming(-10, { duration: 100, easing: Easing.inOut(Easing.quad) }),
+          withTiming(10, { duration: 100, easing: Easing.inOut(Easing.quad) }),
+          withTiming(-10, { duration: 100, easing: Easing.inOut(Easing.quad) }),
+          withTiming(0, { duration: 100, easing: Easing.inOut(Easing.quad) })
+        );
+        return;
+      }
     }
 
     setLoading(true);
     try {
       if (mode === 'signup') {
-        const { error } = await signUp(email, password, fullName);
-        if (error) throw error;
-        Alert.alert('Success', 'Account created! Please log in.');
-        switchMode('login');
+        const { data, error } = await signUp(email, password, fullName);
+        if (error) {
+          setPopupMessage(error.message || 'Something went wrong');
+          setShowPopup(true);
+          throw error;
+        }
+        // Show success message
+        setPopupMessage('Account created successfully! Please log in.');
+        setShowPopup(true);
+        setTimeout(() => {
+          setMode('login');
+        }, 1500);
       } else {
-        const { error } = await signIn(email, password);
-        if (error) throw error;
+        // Save or clear credentials based on rememberMe
+        await saveCredentials(email);
+        
+        const { data, error } = await signIn(email, password);
+        if (error) {
+          setPopupMessage(error.message || 'Invalid credentials');
+          setShowPopup(true);
+          throw error;
+        }
         onSuccess();
       }
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Something went wrong');
+      console.error(error);
     } finally {
       setLoading(false);
     }
   };
 
-  const switchMode = (newMode: AuthMode) => {
-    if (newMode === mode) return;
-    
-    fadeAnim.value = withTiming(0, { duration: 150 }, () => {
-      setMode(newMode);
-      slideAnim.value = withSpring(newMode === 'login' ? 0 : 1, {
-        damping: 20,
-        stiffness: 100,
-      });
-      fadeAnim.value = withTiming(1, { duration: 200 });
-    });
-    
+  const switchModeOnJS = (newMode: AuthMode) => {
+    setMode(newMode);
     setEmail('');
     setPassword('');
     setFullName('');
   };
 
   const toggleMode = () => {
-    switchMode(mode === 'login' ? 'signup' : 'login');
+    const newMode = mode === 'login' ? 'signup' : 'login';
+    const exitDirection = mode === 'login' ? -50 : 50;
+    const entryDirection = newMode === 'login' ? 50 : -50;
+
+    // Animate out
+    opacity.value = withTiming(0, { duration: 200, easing: Easing.inOut(Easing.quad) });
+    translateX.value = withTiming(exitDirection, { duration: 200, easing: Easing.inOut(Easing.quad) }, (finished) => {
+      if (finished) {
+        // Switch mode on JS thread
+        runOnJS(switchModeOnJS)(newMode);
+
+        // Reset position for entry
+        translateX.value = entryDirection;
+        
+        // Animate in
+        opacity.value = withTiming(1, { duration: 300, easing: Easing.inOut(Easing.quad) });
+        translateX.value = withTiming(0, { duration: 300, easing: Easing.out(Easing.quad) });
+      }
+    });
   };
 
-  const headerAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: fadeAnim.value,
-    transform: [{ 
-      translateY: interpolate(fadeAnim.value, [0, 1], [10, 0]) 
-    }],
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [{ translateX: translateX.value }],
+  }));
+
+  const termsShakeStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: termsShake.value }],
   }));
 
   return (
     <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor={theme.BG} />
+      
+      {/* Custom Popup */}
+      <Modal
+        visible={showPopup}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowPopup(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setShowPopup(false)}>
+          <View style={styles.popupOverlay}>
+            <View style={styles.popupContainer}>
+              <Ionicons 
+                name="alert-circle" 
+                size={40} 
+                color={theme.PRIMARY} 
+                style={styles.popupIcon}
+              />
+              <Text style={styles.popupMessage}>{popupMessage}</Text>
+              <TouchableOpacity 
+                style={[styles.popupButton, { backgroundColor: theme.PRIMARY }]}
+                onPress={() => setShowPopup(false)}
+              >
+                <Text style={styles.popupButtonText}>OK</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+
       <KeyboardAvoidingView
         style={styles.keyboardView}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
-        <ScrollView 
-          contentContainerStyle={styles.scrollContent} 
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Logo Section */}
-          <View style={styles.logoSection}>
-            <Image
-              source={require('../assets/stX.png')}
-              style={styles.logo}
-              resizeMode="contain"
-              tintColor="#000000"
-            />
-            <Text style={styles.tagline}>Build. Innovate. Grow.</Text>
-          </View>
+          {/* Header */}
+          <Animated.View style={[styles.header, animatedStyle]}>
+            <Text style={styles.title}>
+              {mode === 'login' ? 'Welcome Back' : 'Create your account'}
+            </Text>
+            <Text style={styles.subtitle}>
+              {mode === 'login'
+                ? 'Stay connected with us using your email and password to access your account.'
+                : 'Provide your full name, email, and password to create your account and get started.'}
+            </Text>
+          </Animated.View>
 
-          {/* Auth Card */}
-          <View style={styles.card}>
-            {/* Tab Switcher */}
-            <View style={styles.tabContainer}>
-              <TouchableOpacity 
-                style={[styles.tab, mode === 'login' && styles.activeTab]} 
-                onPress={() => switchMode('login')}
-              >
-                <Text style={[styles.tabText, mode === 'login' && styles.activeTabText]}>
-                  Sign In
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.tab, mode === 'signup' && styles.activeTab]} 
-                onPress={() => switchMode('signup')}
-              >
-                <Text style={[styles.tabText, mode === 'signup' && styles.activeTabText]}>
-                  Sign Up
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Header */}
-            <Animated.View style={[styles.cardHeader, headerAnimatedStyle]}>
-              <Text style={styles.cardTitle}>
-                {mode === 'login' ? 'Welcome Back' : 'Create Account'}
-              </Text>
-              <Text style={styles.cardSubtitle}>
-                {mode === 'login' ? 'Sign in to continue' : 'Join our community today'}
-              </Text>
-            </Animated.View>
-
-            {/* Form */}
-            <View style={styles.form}>
-              {/* Name Input (only for signup) */}
-              <View style={[styles.inputWrapper, mode === 'login' && styles.hiddenInput]}>
+          {/* Form */}
+          <Animated.View style={[styles.form, animatedStyle]}>
+            {mode === 'signup' && (
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Full Name</Text>
                 <View style={styles.inputContainer}>
-                  <Ionicons name="person-outline" size={20} color={TEXT2} style={styles.inputIcon} />
                   <TextInput
                     style={styles.input}
-                    placeholder="Full Name"
-                    placeholderTextColor={TEXT2}
+                    placeholder="Enter your full name"
+                    placeholderTextColor="#9CA3AF"
                     value={fullName}
                     onChangeText={setFullName}
                     autoCapitalize="words"
-                    editable={mode === 'signup'}
                   />
                 </View>
               </View>
+            )}
 
-              {/* Email Input */}
-              <View style={styles.inputWrapper}>
-                <View style={styles.inputContainer}>
-                  <Ionicons name="mail-outline" size={20} color={TEXT2} style={styles.inputIcon} />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Email"
-                    placeholderTextColor={TEXT2}
-                    value={email}
-                    onChangeText={setEmail}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                  />
-                </View>
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Email Address</Text>
+              <View style={styles.inputContainer}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter your email"
+                  placeholderTextColor="#9CA3AF"
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
               </View>
+            </View>
 
-              {/* Password Input */}
-              <View style={styles.inputWrapper}>
-                <View style={styles.inputContainer}>
-                  <Ionicons name="lock-closed-outline" size={20} color={TEXT2} style={styles.inputIcon} />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Password"
-                    placeholderTextColor={TEXT2}
-                    value={password}
-                    onChangeText={setPassword}
-                    secureTextEntry={!showPassword}
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Password</Text>
+              <View style={styles.inputContainer}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="••••••••"
+                  placeholderTextColor="#9CA3AF"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPassword}
+                />
+                <TouchableOpacity
+                  style={styles.passwordToggle}
+                  onPress={() => setShowPassword(!showPassword)}
+                >
+                  <Ionicons
+                    name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                    size={20}
+                    color="#6B7280"
                   />
-                  <TouchableOpacity
-                    style={styles.passwordToggle}
-                    onPress={() => setShowPassword(!showPassword)}
-                  >
-                    <Ionicons
-                      name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                      size={20}
-                      color={TEXT2}
-                    />
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              {/* Submit Button */}
-              <TouchableOpacity
-                style={styles.submitButton}
-                onPress={handleSubmit}
-                disabled={loading}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.submitButtonText}>
-                  {loading ? 'Please wait...' : mode === 'login' ? 'Sign In' : 'Sign Up'}
-                </Text>
-              </TouchableOpacity>
-
-              {/* Toggle Mode */}
-              <View style={styles.toggleContainer}>
-                <Text style={styles.toggleText}>
-                  {mode === 'login'
-                    ? "Don't have an account?"
-                    : 'Already have an account?'}
-                </Text>
-                <TouchableOpacity onPress={toggleMode}>
-                  <Text style={styles.toggleLink}>
-                    {mode === 'login' ? 'Sign Up' : 'Sign In'}
-                  </Text>
                 </TouchableOpacity>
               </View>
             </View>
-          </View>
+
+            {mode === 'signup' ? (
+              <Animated.View style={[styles.termsContainer, termsShakeStyle]}>
+                <TouchableOpacity
+                  style={styles.checkboxContainer}
+                  onPress={() => setTermsAccepted(!termsAccepted)}
+                >
+                  <View style={[styles.checkbox, termsAccepted && styles.checkboxChecked]}>
+                    {termsAccepted && <Ionicons name="checkmark" size={16} color="#fff" />}
+                  </View>
+                </TouchableOpacity>
+                <Text style={styles.termsText}>
+                  I agree to the <Text style={styles.termsLink}>Terms</Text> & <Text style={styles.termsLink}>Privacy Policy</Text>
+                </Text>
+              </Animated.View>
+            ) : (
+              <View style={styles.loginOptions}>
+                <View style={styles.rememberContainer}>
+                  <TouchableOpacity
+                    style={styles.checkboxContainer}
+                    onPress={() => {
+                      const newRememberMe = !rememberMe;
+                      setRememberMe(newRememberMe);
+                      // If toggling off, immediately clear saved email
+                      if (!newRememberMe) {
+                        AsyncStorage.removeItem('savedEmail');
+                        AsyncStorage.setItem('rememberMe', 'false');
+                      }
+                    }}
+                  >
+                    <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
+                      {rememberMe && <Ionicons name="checkmark" size={16} color="#fff" />}
+                    </View>
+                  </TouchableOpacity>
+                  <Text style={styles.rememberText}>Remember me</Text>
+                </View>
+              </View>
+            )}
+
+            {/* Submit Button */}
+            <TouchableOpacity
+              style={[styles.submitButton, { backgroundColor: theme.PRIMARY }]}
+              onPress={handleSubmit}
+              disabled={loading}
+              activeOpacity={0.9}
+            >
+              <Text style={styles.submitButtonText}>
+                {loading ? 'Please wait...' : (mode === 'login' ? 'Sign In' : 'Sign Up')}
+              </Text>
+            </TouchableOpacity>
+
+            {/* Toggle Mode */}
+            <View style={styles.toggleContainer}>
+              <Text style={styles.toggleText}>
+                {mode === 'login'
+                  ? "Don't have an account? "
+                  : 'Already have an account? '}
+              </Text>
+              <TouchableOpacity onPress={toggleMode} activeOpacity={0.7}>
+                <Text style={[styles.toggleLink, { color: theme.PRIMARY }]}>
+                  {mode === 'login' ? 'Sign Up' : 'Sign In'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </Animated.View>
+
+          {/* Add some extra space at bottom for keyboard */}
+          <View style={{ height: 40 }} />
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -255,7 +374,7 @@ export default function AuthScreen({ onSuccess }: AuthScreenProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: BG,
+    backgroundColor: '#FFFFFF',
   },
   keyboardView: {
     flex: 1,
@@ -263,143 +382,173 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     paddingHorizontal: 24,
-    paddingTop: 20,
-    paddingBottom: 40,
+    paddingTop: 50,
   },
-  logoSection: {
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  logo: {
-    width: 140,
-    height: 70,
-  },
-  tagline: {
-    marginTop: 8,
-    fontSize: 13,
-    color: TEXT2,
-    fontWeight: '600',
-    letterSpacing: 1.5,
-  },
-  tabContainer: {
-    flexDirection: 'row',
-    backgroundColor: SURFACE,
-    borderRadius: 12,
-    padding: 4,
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: 12,
-    alignItems: 'center',
-    borderRadius: 8,
-  },
-  activeTab: {
-    backgroundColor: PRIMARY,
-  },
-  tabText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: TEXT2,
-  },
-  activeTabText: {
-    color: SURFACE,
-  },
-  card: {
-    backgroundColor: SURFACE,
-    borderRadius: 24,
-    padding: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
-    elevation: 4,
-  },
-  cardHeader: {
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 20,
   },
-  cardTitle: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: ON_SURFACE,
-    marginBottom: 4,
-    letterSpacing: -0.3,
+  header: {
+    marginBottom: 28,
+    alignItems: 'center',
   },
-  cardSubtitle: {
+  title: {
+    fontSize: 26,
+    fontWeight: '700',
+    color: '#000000',
+    marginBottom: 8,
+    letterSpacing: -0.5,
+    textAlign: 'center',
+  },
+  subtitle: {
     fontSize: 14,
-    color: TEXT2,
+    color: '#6B7280',
+    lineHeight: 22,
+    textAlign: 'center',
   },
   form: {
     width: '100%',
   },
-  inputWrapper: {
-    marginBottom: 12,
+  inputGroup: {
+    marginBottom: 16,
+  },
+  inputLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#000000',
+    marginBottom: 6,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: BG,
-    borderWidth: 1.5,
-    borderColor: OUTLINE,
+    backgroundColor: '#F3F4F6',
     borderRadius: 12,
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
     height: 50,
-  },
-  inputIcon: {
-    marginRight: 10,
   },
   input: {
     flex: 1,
     fontSize: 15,
-    color: ON_SURFACE,
+    color: '#000000',
     fontWeight: '500',
   },
   passwordToggle: {
     padding: 4,
   },
-  hiddenInput: {
-    height: 0,
-    marginBottom: 0,
-    opacity: 0,
-    overflow: 'hidden',
+  termsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  checkboxContainer: {
+    marginRight: 8,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: '#D1D5DB',
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  checkboxChecked: {
+    backgroundColor: '#004CD2',
+    borderColor: '#004CD2',
+  },
+  termsText: {
+    fontSize: 13,
+    color: '#6B7280',
+    flex: 1,
+  },
+  termsLink: {
+    color: '#004CD2',
+    fontWeight: '600',
+  },
+  loginOptions: {
+    marginBottom: 20,
+  },
+  rememberContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  rememberText: {
+    fontSize: 13,
+    color: '#6B7280',
+    marginLeft: 8,
+  },
+  forgotPassword: {
+    fontSize: 13,
+    color: '#004CD2',
+    fontWeight: '600',
   },
   submitButton: {
-    backgroundColor: PRIMARY,
     borderRadius: 12,
-    paddingVertical: 14,
+    paddingVertical: 15,
     alignItems: 'center',
-    marginTop: 4,
-    shadowColor: PRIMARY,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 4,
+    marginBottom: 20,
   },
   submitButtonText: {
     color: '#FFFFFF',
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: '600',
     letterSpacing: 0.3,
   },
   toggleContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 4,
-    marginTop: 16,
   },
   toggleText: {
     fontSize: 13,
-    color: TEXT2,
+    color: '#6B7280',
   },
   toggleLink: {
     fontSize: 13,
-    color: PRIMARY,
-    fontWeight: '700',
+    fontWeight: '600',
+  },
+  // Popup styles
+  popupOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  popupContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 24,
+    marginHorizontal: 40,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 10,
+  },
+  popupIcon: {
+    marginBottom: 16,
+  },
+  popupMessage: {
+    fontSize: 15,
+    color: '#1F2937',
+    textAlign: 'center',
+    marginBottom: 20,
+    lineHeight: 22,
+  },
+  popupButton: {
+    paddingHorizontal: 32,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  popupButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '600',
   },
 });

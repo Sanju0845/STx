@@ -144,3 +144,12 @@ INSERT INTO testimonials (name, role, avatar_url, text, rating, is_active, sort_
   ('Michael Chen', 'Product Manager', 'https://i.pravatar.cc/150?img=2', 'Professional, responsive, and incredibly talented. Highly recommended!', 5, true, 2),
   ('Priya Patel', 'CTO', 'https://i.pravatar.cc/150?img=3', 'Best design agency we have worked with. The team is creative and technical.', 5, true, 3)
 ON CONFLICT DO NOTHING;
+
+INSERT INTO courses (title, description, category, price, duration, students_count, icon_name, grad_color_1, grad_color_2, is_special, is_active, sort_order) VALUES 
+  ('UI/UX Design Fundamentals', 'Learn the core principles of UI/UX design including typography, color theory, and user research.', 'ui_ux', 4999, '6 weeks', 124, 'color-palette', '#004CD2', '#003399', false, true, 1),
+  ('React Native Masterclass', 'Build cross‑platform mobile apps from scratch with React Native and Expo.', 'mobile_app', 7999, '8 weeks', 89, 'phone-portrait', '#6366F1', '#4338CA', false, true, 2),
+  ('Full Stack Web Development', 'Become a full stack developer with React, Node.js, and PostgreSQL.', 'full_stack', 8999, '12 weeks', 156, 'globe', '#0D9488', '#0F766E', false, true, 3),
+  ('Frontend Development Bootcamp', 'Master HTML, CSS, JavaScript, and React to build beautiful user interfaces.', 'frontend', 5999, '8 weeks', 203, 'desktop', '#F59E0B', '#D97706', false, true, 4),
+  ('Backend Development with Node.js', 'Learn server‑side development, APIs, databases, and authentication.', 'backend', 6499, '6 weeks', 98, 'server', '#8B5CF6', '#7C3AED', false, true, 5),
+  ('Digital Agency Starter Kit', 'Complete package: templates, design system, and training to launch your agency fast.', 'specialized', 14999, 'Self-paced', 45, 'rocket', '#EC4899', '#DB2777', true, true, 6)
+ON CONFLICT DO NOTHING;

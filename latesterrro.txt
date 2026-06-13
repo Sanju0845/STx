@@ -1,0 +1,105 @@
+The core error has shifted from a general NDK problem to a highly specific CMake linking error:
+
+```text
+CMake Error at CMakeLists.txt:68 (add_library):
+  Target "worklets" links to target "ReactAndroid::jsctooling" but the target
+  was not found.
+
+```
+
+### Why this is happening
+
+You are running **React Native 0.81** (as seen in your log: `-DREACT_NATIVE_MINOR_VERSION=81`).
+
+React Native 0.81 structurally reorganized its Android native C++ build architecture. It completely decoupled the old **JSC (JavaScriptCore)** legacy targets and removed `ReactAndroid::jsctooling` from the default `ReactAndroid` CMake export configuration.
+
+Because `react-native-worklets` is looking for `ReactAndroid::jsctooling` to link against when it detects you aren't using Hermes (`-DJS_RUNTIME=jsc` and `-DHERMES_V1_ENABLED=false`), the build crashes because that target literally no longer exists in React Native 0.81+.
+
+---
+
+## How to Fix It
+
+### Solution 1: Switch your JavaScript Runtime to Hermes (Recommended)
+
+React Native 0.81 strictly expects you to use Hermes. If you don't explicitly force Hermes in your Expo configurations, it can fall back to legacy JSC paths in third-party native libraries, triggering this missing target error.
+
+1. Open your **`app.json`**.
+2. Set the `jsEngine` explicitly to `"hermes"` at the root or under the `"android"` block:
+
+```json
+{
+  "expo": {
+    "name": "Your App Name",
+    "slug": "your-app-slug",
+    "jsEngine": "hermes", 
+    "android": {
+      "jsEngine": "hermes",
+      "ndkVersion": "26.1.10909125",
+      "package": "com.yourname.app"
+    }
+  }
+}
+
+```
+
+### Solution 2: Apply a patch to `react-native-worklets`
+
+If you *must* use JSC, or if the library still tries to check for `jsctooling` regardless of your configuration, you have to patch the library's `CMakeLists.txt` file so it skips demanding that missing target.
+
+You can automate this using **`patch-package`**:
+
+1. Install `patch-package`:
+```bash
+npm install patch-package --save-dev
+
+```
+
+
+2. Open the file `node_modules/react-native-worklets/android/CMakeLists.txt` in your code editor.
+3. Find the line that looks like this (around line 68):
+```cmake
+ReactAndroid::jsctooling
+
+```
+
+
+4. Comment it out or remove it if you aren't using JavaScriptCore tooling targets:
+```cmake
+# ReactAndroid::jsctooling
+
+```
+
+
+5. Run the patch generator in your terminal to save this fix permanently:
+```bash
+npx patch-package react-native-worklets
+
+```
+
+
+6. Add a post-install script to your **`package.json`** so the Expo build server applies this patch when it builds:
+```json
+"scripts": {
+  "postinstall": "patch-package"
+}
+
+```
+
+
+
+### Step-by-Step Deployment
+
+Once you have modified your files:
+
+1. Commit your changes (including the `patches/` folder if you chose Solution 2):
+```bash
+git add app.json package.json package-lock.json
+# if using patch-package:
+git add patches/ 
+git commit -m "build: fix ReactAndroid::jsctooling compilation crash"
+git push
+
+```
+
+
+2. Run your `eas build --platform android` command again.

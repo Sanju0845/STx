@@ -40,7 +40,16 @@ export interface Service {
   is_special?: boolean;
 }
 
-export const COURSE_CATEGORY_LABELS: Record<string, string> = {};
+export const COURSE_CATEGORY_LABELS: Record<string, string> = {
+  'ui_ux': 'UI/UX Design',
+  'web_dev': 'Web Dev',
+  'web_design': 'Web Design',
+  'mobile_app': 'Mobile App',
+  'specialized': 'Specialized',
+  'full_stack': 'Full Stack',
+  'frontend': 'Frontend',
+  'backend': 'Backend',
+};
 
 export interface RecentWork {
   id: string;

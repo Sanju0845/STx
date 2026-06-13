@@ -6,7 +6,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   Image,
-  TextInput,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,10 +18,16 @@ import Animated, {
 import { useServices, useTestimonials } from '../lib/useData';
 import type { Service, ServiceCategory } from '../lib/types';
 import { SERVICE_CATEGORY_LABELS } from '../lib/types';
-import { useTheme } from '../lib/ThemeContext';
 
-const PRIMARY = '#004CD2';
-const TER_CONT = '#627289';
+/* ── Theme ──────────────────────────────────────── */
+const PRIMARY    = '#004CD2';
+const BG         = '#F7F9FB';
+const SURFACE    = '#FFFFFF';
+const ON_SURFACE = '#191C1E';
+const TEXT2      = '#424656';
+const OUTLINE    = '#C3C5D8';
+const SURF_LOW   = '#F2F4F6';
+const TER_CONT   = '#627289';
 
 const CAT_COLORS: Record<ServiceCategory, string> = {
   web_static: PRIMARY,
@@ -34,6 +39,8 @@ const CAT_COLORS: Record<ServiceCategory, string> = {
   courses: '#565E74',
   ui_ux: '#565E74',
 };
+
+const FILTERS = ['All Services', 'Web Static', 'Web Dynamic', 'Full Stack', 'E-Commerce', 'Mobile App', 'Java Proxy', 'Courses', 'UI/UX'];
 
 interface Props {
   onServiceSelect: (service: Service) => void;
@@ -66,78 +73,60 @@ function FadeInSmall({ children, delay = 0 }: { children: React.ReactNode; delay
 
 export default function ServicesScreen({ onServiceSelect }: Props) {
   const [activeFilter, setActiveFilter] = useState('All Services');
-  const [search, setSearch] = useState('');
   const { data: services } = useServices();
   const { data: testimonials } = useTestimonials();
-  const { theme: t } = useTheme();
-
-  // Extract unique categories from services (filter out any undefined/null)
-  const uniqueCategories = Array.from(
-    new Set(
-      services
-        .map(service => service.category)
-        .filter((cat): cat is ServiceCategory => cat != null)
-    )
-  );
-  // Create filters: "All Services" + unique categories
-  const filters = ['All Services', ...uniqueCategories];
-
-  // Helper to get category label with fallback
-  const getCategoryLabel = (category: ServiceCategory | undefined | null): string => {
-    if (!category) return 'Other';
-    return SERVICE_CATEGORY_LABELS[category] || category.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
-  };
-
-  // Filter services based on active filter and search
-  const filteredServices = services.filter(service => {
-    const matchesFilter = activeFilter === 'All Services' || service.category === activeFilter;
-    const matchesSearch = search === '' || 
-      service.title.toLowerCase().includes(search.toLowerCase()) ||
-      service.description.toLowerCase().includes(search.toLowerCase());
-    return matchesFilter && matchesSearch;
-  });
 
   return (
-    <View style={[styles.container, { backgroundColor: t.BG }]}>
+    <View style={styles.container}>
+      {/* ── Header ── */}
+      <FadeInSmall delay={0}>
+        <View style={styles.header}>
+          <View style={styles.headerLeft}>
+            <Text style={styles.brand}>Visionary Agency</Text>
+          </View>
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <TouchableOpacity activeOpacity={0.7} style={styles.headerButton}>
+              <Ionicons name="search-outline" size={22} color={PRIMARY} />
+            </TouchableOpacity>
+            <TouchableOpacity activeOpacity={0.7} style={styles.headerButton}>
+              <Ionicons name="notifications-outline" size={22} color={PRIMARY} />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </FadeInSmall>
+
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
         {/* ── Title Section ── */}
         <View style={styles.titleSection}>
           <FadeInSmall delay={50}>
-            <Text style={[styles.pageTitle, { color: t.ON_SURFACE }]}>Our Services</Text>
+            <Text style={styles.pageTitle}>Our Services</Text>
           </FadeInSmall>
           <FadeInSmall delay={80}>
-            <Text style={[styles.pageSub, { color: t.TEXT2 }]}>Tailored digital solutions for visionary teams.</Text>
+            <Text style={styles.pageSub}>Tailored digital solutions for visionary teams.</Text>
           </FadeInSmall>
         </View>
 
         {/* ── Search ── */}
         <FadeInSmall delay={110}>
-          <View style={[styles.searchWrap, { backgroundColor: t.SURF_LOW }]}>
-            <Ionicons name="search-outline" size={18} color={t.OUTLINE} style={styles.searchIcon} />
-            <TextInput
-              style={[styles.searchInput, { color: t.ON_SURFACE }]}
-              placeholder="Search services..."
-              placeholderTextColor={t.OUTLINE}
-              value={search}
-              onChangeText={setSearch}
-            />
+          <View style={styles.searchWrap}>
+            <Ionicons name="search-outline" size={18} color={OUTLINE} style={styles.searchIcon} />
+            <Text style={styles.searchPlaceholder}>Search services...</Text>
           </View>
         </FadeInSmall>
 
         {/* ── Filter Chips ── */}
         <FadeInSmall delay={140}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
-            {filters.map((filter) => {
-              const displayLabel = filter === 'All Services' ? 'All Services' : getCategoryLabel(filter as ServiceCategory);
-              const active = activeFilter === filter;
+            {FILTERS.map((f, i) => {
+              const active = activeFilter === f;
               return (
                 <TouchableOpacity
-                  key={filter}
-                  style={[styles.chip, { backgroundColor: t.SURFACE, borderColor: t.OUTLINE + '60' }, active && { backgroundColor: t.PRIMARY, borderColor: t.PRIMARY }]}
-                  onPress={() => setActiveFilter(filter)}
+                  key={f}
+                  style={[styles.chip, active && styles.chipActive]}
+                  onPress={() => setActiveFilter(f)}
                   activeOpacity={0.7}
                 >
-                  <Text style={[styles.chipText, { color: t.TEXT2 }, active && { color: '#fff' }]}>{displayLabel}</Text>
+                  <Text style={[styles.chipText, active && styles.chipTextActive]}>{f}</Text>
                 </TouchableOpacity>
               );
             })}
@@ -146,18 +135,20 @@ export default function ServicesScreen({ onServiceSelect }: Props) {
 
         {/* ── Service Cards Grid ── */}
         <View style={styles.grid}>
-          {filteredServices.map((svc, index) => {
-            const accent = CAT_COLORS[svc.category] || t.PRIMARY;
-            const categoryLabel = getCategoryLabel(svc.category);
+          {services.map((svc, index) => {
+            const accent = CAT_COLORS[svc.category];
+            const categoryLabel = SERVICE_CATEGORY_LABELS[svc.category];
+            
             return (
               <FadeInSmall key={svc.id} delay={170 + index * 40}>
-                <TouchableOpacity
-                  style={[styles.serviceCard, { backgroundColor: t.SURFACE, borderColor: t.SURF_LOW }]}
+                <TouchableOpacity 
+                  style={styles.serviceCard} 
                   activeOpacity={0.92}
                   onPress={() => onServiceSelect(svc)}
                 >
+                  {/* Image / Hero area */}
                   {svc.is_special ? (
-                    <LinearGradient colors={['#1B63FF', t.PRIMARY]} style={styles.cardImg}>
+                    <LinearGradient colors={['#1B63FF', PRIMARY]} style={styles.cardImg}>
                       <View style={styles.specialOverlay}>
                         <Ionicons name={(svc.icon_name || 'cube-outline') as any} size={40} color="#fff" />
                         <Text style={styles.specialTitle}>{svc.title}</Text>
@@ -168,7 +159,11 @@ export default function ServicesScreen({ onServiceSelect }: Props) {
                     </LinearGradient>
                   ) : svc.image_url ? (
                     <View style={styles.cardImgWrap}>
-                      <Image source={{ uri: svc.image_url }} style={styles.cardImg} resizeMode="cover" />
+                      <Image
+                        source={{ uri: svc.image_url }}
+                        style={styles.cardImg}
+                        resizeMode="cover"
+                      />
                       <View style={styles.imgOverlay} />
                       <View style={[styles.catBadge, { backgroundColor: accent + 'E6' }]}>
                         <Text style={styles.catBadgeText}>{categoryLabel.toUpperCase()}</Text>
@@ -182,19 +177,21 @@ export default function ServicesScreen({ onServiceSelect }: Props) {
                       </View>
                     </View>
                   )}
+
+                  {/* Content */}
                   <View style={styles.cardBody}>
-                    <Text style={[styles.cardTitle, { color: t.ON_SURFACE }]}>{svc.title}</Text>
-                    <Text style={[styles.cardDesc, { color: t.TEXT2 }]} numberOfLines={2}>{svc.description}</Text>
+                    <Text style={styles.cardTitle}>{svc.title}</Text>
+                    <Text style={styles.cardDesc} numberOfLines={2}>{svc.description}</Text>
                     <View style={styles.cardMeta}>
                       <View style={styles.metaGroup}>
                         <View style={styles.metaItem}>
-                          <Ionicons name="time-outline" size={14} color={t.TEXT2} />
-                          <Text style={[styles.metaText, { color: t.TEXT2 }]}>{svc.duration || 'Custom'}</Text>
+                          <Ionicons name="time-outline" size={14} color={TEXT2} />
+                          <Text style={styles.metaText}>{svc.duration || 'Custom'}</Text>
                         </View>
                       </View>
                       <View style={styles.priceWrap}>
-                        <Text style={[styles.cardPrice, { color: t.PRIMARY }]}>₹{svc.price_start.toLocaleString()}</Text>
-                        <Text style={[styles.priceSuffix, { color: t.TEXT2 }]}>onwards</Text>
+                        <Text style={styles.cardPrice}>₹{svc.price_start.toLocaleString()}</Text>
+                        <Text style={styles.priceSuffix}>onwards</Text>
                       </View>
                     </View>
                   </View>
@@ -203,6 +200,7 @@ export default function ServicesScreen({ onServiceSelect }: Props) {
             );
           })}
         </View>
+
         <View style={{ height: 140 }} />
       </ScrollView>
     </View>
@@ -211,7 +209,7 @@ export default function ServicesScreen({ onServiceSelect }: Props) {
 
 /* ── Styles ──────────────────────────────────────── */
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container: { flex: 1, backgroundColor: BG },
   content: { paddingBottom: 20 },
 
   /* Header */
@@ -221,81 +219,138 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16, paddingVertical: 8,
   },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: 'rgba(255,255,255,0.8)',
     paddingHorizontal: 16, paddingVertical: 10,
-    borderRadius: 20, borderWidth: 1,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12, elevation: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.4)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 8,
   },
   headerButton: {
-    width: 44, height: 44, borderRadius: 22,
-    alignItems: 'center', justifyContent: 'center', borderWidth: 1,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12, elevation: 8,
+    backgroundColor: 'rgba(255,255,255,0.8)',
+    width: 44, height: 44,
+    borderRadius: 22,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.4)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 8,
   },
-  brand: { fontSize: 18, fontWeight: '800', letterSpacing: -0.5 },
+  brand: { fontSize: 18, fontWeight: '800', color: PRIMARY, letterSpacing: -0.5 },
 
   /* Title */
-  titleSection: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 14 },
-  pageTitle: { fontSize: 24, fontWeight: '700' },
-  pageSub: { fontSize: 13, marginTop: 4 },
+  titleSection: { paddingHorizontal: 20, paddingTop: 70, paddingBottom: 14 },
+  pageTitle: { fontSize: 24, fontWeight: '700', color: ON_SURFACE },
+  pageSub: { fontSize: 13, color: TEXT2, marginTop: 4 },
 
   /* Search */
   searchWrap: {
-    flexDirection: 'row', alignItems: 'center',
+    flexDirection: 'row', alignItems: 'center', backgroundColor: SURF_LOW,
     borderRadius: 14, marginHorizontal: 20, marginBottom: 12, paddingHorizontal: 14,
   },
   searchIcon: { marginRight: 8 },
-  searchInput: { paddingVertical: 13, fontSize: 13, fontWeight: '600', flex: 1 },
+  searchPlaceholder: { paddingVertical: 13, color: OUTLINE, fontSize: 13, fontWeight: '600' },
 
   /* Filters */
   filterRow: { paddingHorizontal: 20, gap: 8, marginBottom: 18 },
-  chip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 12, borderWidth: 1 },
-  chipText: { fontSize: 12, fontWeight: '600' },
+  chip: {
+    paddingHorizontal: 16, paddingVertical: 8, borderRadius: 12,
+    backgroundColor: SURFACE, borderWidth: 1, borderColor: OUTLINE + '60',
+  },
+  chipActive: { backgroundColor: PRIMARY, borderColor: PRIMARY },
+  chipText: { fontSize: 12, color: TEXT2, fontWeight: '600' },
+  chipTextActive: { color: '#fff' },
 
-  /* Service Cards */
+  /* Service Cards Grid */
   grid: { paddingHorizontal: 20, gap: 16 },
   serviceCard: {
-    borderRadius: 18, overflow: 'hidden', borderWidth: 1,
+    backgroundColor: SURFACE, borderRadius: 18, overflow: 'hidden',
+    borderWidth: 1, borderColor: SURF_LOW,
     shadowColor: '#0F172A', shadowOpacity: 0.06, shadowRadius: 20, shadowOffset: { width: 0, height: 8 }, elevation: 3,
   },
-  cardImgWrap: { height: 160, overflow: 'hidden', position: 'relative' },
-  cardImg: { height: 160, width: '100%' },
-  imgOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.06)' },
-  catBadge: { position: 'absolute', top: 12, left: 12, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+  cardImgWrap: {
+    height: 160, overflow: 'hidden', position: 'relative',
+  },
+  cardImg: {
+    height: 160, width: '100%',
+  },
+  imgOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.06)',
+  },
+  catBadge: {
+    position: 'absolute', top: 12, left: 12,
+    paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8,
+  },
   catBadgeText: { fontSize: 9, fontWeight: '800', letterSpacing: 0.8, color: '#fff' },
-  specialOverlay: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8 },
+  specialOverlay: {
+    flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8,
+  },
   specialTitle: { color: '#fff', fontSize: 16, fontWeight: '700' },
+
   cardBody: { padding: 18 },
-  cardTitle: { fontSize: 16, fontWeight: '700', marginBottom: 6 },
-  cardDesc: { fontSize: 13, lineHeight: 19 },
-  cardMeta: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 16 },
+  cardTitle: { fontSize: 16, fontWeight: '700', color: ON_SURFACE, marginBottom: 6 },
+  cardDesc: { fontSize: 13, color: TEXT2, lineHeight: 19 },
+  cardMeta: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 16,
+  },
   metaGroup: { flexDirection: 'row', gap: 14 },
   metaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  metaText: { fontSize: 11, fontWeight: '600' },
+  metaText: { fontSize: 11, color: TEXT2, fontWeight: '600' },
   priceWrap: { alignItems: 'flex-end' },
-  cardPrice: { fontSize: 18, fontWeight: '700' },
-  priceSuffix: { fontSize: 10, fontWeight: '600', marginTop: 1 },
+  cardPrice: { fontSize: 18, fontWeight: '700', color: PRIMARY },
+  priceSuffix: { fontSize: 10, color: TEXT2, fontWeight: '600', marginTop: 1 },
 
+  /* Section Card */
   sectionCard: {
-    borderRadius: 18, padding: 20, marginHorizontal: 20, marginBottom: 14, marginTop: 4,
+    backgroundColor: SURFACE, borderRadius: 18, padding: 20,
+    marginHorizontal: 20, marginBottom: 14, marginTop: 4,
     shadowColor: '#0F172A', shadowOpacity: 0.04, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 2,
   },
-  sectionIconWrap: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
-  sectionCardTitle: { fontSize: 20, fontWeight: '700' },
-  sectionCardSub: { fontSize: 13, marginTop: 3 },
-  mobileAppItem: { borderRadius: 12, padding: 14 },
-  mobileAppTitle: { fontSize: 13, fontWeight: '700' },
-  mobileAppDesc: { fontSize: 11, marginTop: 3 },
-  darkBtn: { marginTop: 18, paddingVertical: 14, borderRadius: 14, alignItems: 'center' },
-  darkBtnText: { fontWeight: '600', fontSize: 14 },
-  proxyCard: { marginHorizontal: 20, marginBottom: 14, borderRadius: 18, padding: 22, overflow: 'hidden' },
-  proxyBadge: { alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 8, marginBottom: 10 },
+  sectionIconWrap: {
+    width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: PRIMARY + '18', marginBottom: 12,
+  },
+  sectionCardTitle: { fontSize: 20, fontWeight: '700', color: ON_SURFACE },
+  sectionCardSub: { fontSize: 13, color: TEXT2, marginTop: 3 },
+
+  /* Mobile Apps */
+  mobileAppItem: { backgroundColor: SURF_LOW, borderRadius: 12, padding: 14 },
+  mobileAppTitle: { fontSize: 13, fontWeight: '700', color: ON_SURFACE },
+  mobileAppDesc: { fontSize: 11, color: TEXT2, marginTop: 3 },
+  darkBtn: {
+    marginTop: 18, backgroundColor: ON_SURFACE, paddingVertical: 14, borderRadius: 14, alignItems: 'center',
+  },
+  darkBtnText: { color: SURFACE, fontWeight: '600', fontSize: 14 },
+
+  /* Proxy */
+  proxyCard: {
+    marginHorizontal: 20, marginBottom: 14, borderRadius: 18, padding: 22, overflow: 'hidden',
+  },
+  proxyBadge: {
+    alignSelf: 'flex-start', backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 10, paddingVertical: 3, borderRadius: 8, marginBottom: 10,
+  },
   proxyBadgeText: { color: '#fff', fontSize: 9, fontWeight: '800', letterSpacing: 0.5 },
   proxyTitle: { fontSize: 22, fontWeight: '700', color: '#fff', marginBottom: 8 },
   proxySub: { fontSize: 13, color: 'rgba(255,255,255,0.9)', lineHeight: 19, marginBottom: 18 },
   proxyFeature: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 20 },
   proxyFeatureText: { color: '#fff', fontSize: 12, fontWeight: '700' },
-  proxyBtn: { alignSelf: 'flex-start', backgroundColor: '#fff', paddingHorizontal: 24, paddingVertical: 10, borderRadius: 12 },
+  proxyBtn: {
+    alignSelf: 'flex-start', backgroundColor: '#fff',
+    paddingHorizontal: 24, paddingVertical: 10, borderRadius: 12,
+  },
   proxyBtnText: { color: TER_CONT, fontWeight: '700', fontSize: 13 },
+
+  /* Courses Preview */
   tagsRow: { flexDirection: 'row', gap: 6, marginTop: 12 },
-  tag: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
-  tagText: { fontSize: 10, fontWeight: '700' },
+  tag: { backgroundColor: '#E0E3E5', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+  tagText: { fontSize: 10, fontWeight: '700', color: TEXT2 },
 });

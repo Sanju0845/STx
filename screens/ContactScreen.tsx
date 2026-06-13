@@ -18,15 +18,6 @@ interface ContactScreenProps {
 export default function ContactScreen({ onBack }: ContactScreenProps) {
   return (
     <SafeAreaView style={styles.container}>
-      {/* Top bar with back button */}
-      <View style={styles.topBar}>
-        <TouchableOpacity onPress={onBack} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={TEXT} />
-        </TouchableOpacity>
-        <Text style={styles.topBarTitle}>Contact</Text>
-        <View style={{ width: 24 }} />
-      </View>
-      
       <View style={styles.content}>
         <View style={styles.iconContainer}>
           <Ionicons name="construct-outline" size={80} color={PRIMARY} />

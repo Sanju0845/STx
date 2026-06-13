@@ -7,10 +7,10 @@ import Animated, {
   interpolate,
   Extrapolation,
   Easing,
-  runOnJS,
 } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import type { TabKey } from '../lib/types';
+import { useTheme } from '../lib/ThemeContext';
 
 interface Tab {
   key: TabKey;
@@ -40,6 +40,7 @@ const PADDING_VERTICAL = 5;
 const BUTTON_DIAMETER = CAPSULE_HEIGHT - PADDING_VERTICAL * 2; 
 
 export default function AnimatedTabBar({ activeTab, onTabChange, onContactPress }: Props) {
+  const { theme: t } = useTheme();
   const indicatorX = useSharedValue(0);
   const indicatorW = useSharedValue(BUTTON_DIAMETER);
   const [isReady, setIsReady] = useState(false);
@@ -97,7 +98,7 @@ export default function AnimatedTabBar({ activeTab, onTabChange, onContactPress 
   return (
     <View style={styles.footerContainer} pointerEvents="box-none">
       <View style={styles.rowWrapper}>
-        <View style={styles.pill}>
+        <View style={[styles.pill, { backgroundColor: t.PILL_BG }]}>
           <Animated.View style={indicatorStyle} />
 
           {TABS.map((tab, i) => {
@@ -157,7 +158,7 @@ function AnimatedContactButton({ onPress }: { onPress: () => void }) {
         opacity.value = withTiming(1, { duration: 200 });
       }}
     >
-      <Ionicons name="person" size={22} color="#fff" />
+      <Ionicons name="chatbubble-ellipses-outline" size={22} color="#fff" />
     </Animated.View>
   );
 }
