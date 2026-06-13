@@ -27,6 +27,9 @@
         "projectId": "80be48b6-3518-4fc8-ae99-1ab2aa6f97ab"
       }
     },
-    "owner": "ttemp1"
+    "owner": "ttemp1",
+    "plugins": [
+      "expo-font"
+    ]
   }
 }
