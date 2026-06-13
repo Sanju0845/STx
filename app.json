@@ -23,14 +23,14 @@
       "jsEngine": "hermes",
       "ndkVersion": "26.1.10909125"
     },
-    "extra": {
-      "eas": {
-        "projectId": "80be48b6-3518-4fc8-ae99-1ab2aa6f97ab"
-      }
-    },
-    "owner": "ttemp1",
     "plugins": [
       "expo-font"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "2077abac-274d-4b79-9972-cc154bff4cc9"
+      }
+    },
+    "owner": "rahuldev01"
   }
 }

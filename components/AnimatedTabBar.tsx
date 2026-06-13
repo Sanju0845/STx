@@ -10,6 +10,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur'; 
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { TabKey } from '../lib/types';
 import { useTheme } from '../lib/ThemeContext';
 
@@ -47,6 +48,7 @@ const SMOOTH_EASE = Easing.bezier(0.25, 1, 0.5, 1);
 
 export default function AnimatedTabBar({ activeTab, onTabChange, onContactPress }: Props) {
   const { theme: t } = useTheme();
+  const insets = useSafeAreaInsets();
   const indicatorX = useSharedValue(0);
   const indicatorW = useSharedValue(TAB_ACTIVE_WIDTH);
 
@@ -76,7 +78,7 @@ export default function AnimatedTabBar({ activeTab, onTabChange, onContactPress 
   const blurTint = t.isDark ? 'dark' : 'light';
 
   return (
-    <View style={styles.footerContainer} pointerEvents="box-none">
+    <View style={[styles.footerContainer, { paddingBottom: Math.max(insets.bottom, 8) + 10 }]} pointerEvents="box-none">
       <View style={styles.rowWrapper} pointerEvents="box-none">
         <View style={[
           styles.pill, { 
@@ -191,7 +193,7 @@ function AnimatedTabItem({
     maxWidth: interpolate(
       expansionProgress.value,
       [0, 1],
-      [0, 56],
+      [0, 70],
       Extrapolation.CLAMP
     ),
     transform: [
@@ -244,7 +246,6 @@ const styles = StyleSheet.create({
     height: 120,
     alignItems: 'center',
     justifyContent: 'flex-end',
-    paddingBottom: 38, 
   },
   rowWrapper: {
     flexDirection: 'row',
@@ -292,7 +293,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   tabLabel: {
-    fontSize: 12.5,
+    fontSize: 11,
     fontWeight: '700',
     color: '#FFFFFF',
     letterSpacing: -0.2,

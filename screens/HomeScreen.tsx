@@ -17,6 +17,7 @@ import Animated, {
   withTiming,
   Easing,
 } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { TabKey } from '../lib/types';
 import { useServices, useRecentWorks, useTestimonials, useAppSettings } from '../lib/useData';
 import { useTheme } from '../lib/ThemeContext';
@@ -57,6 +58,7 @@ interface Props {
 
 export default function HomeScreen({ onNavigate }: Props) {
   const { theme: t } = useTheme();
+  const insets = useSafeAreaInsets();
   const { data: services } = useServices();
   const { data: recentWorks } = useRecentWorks();
   const { data: testimonials } = useTestimonials();
@@ -136,7 +138,7 @@ export default function HomeScreen({ onNavigate }: Props) {
         </View>
 
         {/* Hero Content (moved down) */}
-        <View style={{ paddingTop: 140, flex: 1 }}>
+        <View style={{ paddingTop: 140 + (insets.top > 0 ? insets.top : 0), flex: 1 }}>
           <View style={styles.hero}>
             <FadeInSmall delay={30}>
               <View style={[styles.badge, { backgroundColor: t.SEC_CONT }]}>
@@ -303,7 +305,7 @@ export default function HomeScreen({ onNavigate }: Props) {
             </View>
           </FadeInSmall>
 
-          <View style={{ height: 120 }} />
+          <View style={{ height: 20 + (insets.bottom > 0 ? insets.bottom : 0) }} />
         </View>
       </ScrollView>
     </View>
@@ -366,7 +368,7 @@ const styles = StyleSheet.create({
   heroBtnSecondary: { paddingHorizontal: 28, paddingVertical: 14, borderRadius: 14, borderWidth: 1 },
   heroBtnSecText: { fontWeight: '700', fontSize: 14 },
   sheet: { flex: 1 },
-  sheetContent: { paddingBottom: 20 },
+  sheetContent: { },
   sheetPanel: { borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 8, borderTopWidth: 2, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 16, shadowOffset: { width: 0, height: -4 }, elevation: 8 },
   dragHandleWrap: { alignItems: 'center', paddingVertical: 8 },
   dragHandle: { width: 40, height: 4, borderRadius: 2 },
