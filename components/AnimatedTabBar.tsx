@@ -1,5 +1,5 @@
-import React, { useCallback, useRef, useState, useEffect } from 'react';
-import { View, StyleSheet, LayoutChangeEvent } from 'react-native';
+import React, { useEffect } from 'react';
+import { View, StyleSheet } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -9,6 +9,7 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur'; 
 import type { TabKey } from '../lib/types';
 import { useTheme } from '../lib/ThemeContext';
 
@@ -32,106 +33,88 @@ interface Props {
   onContactPress: () => void;
 }
 
-const PRIMARY = '#007AFF'; 
-const INACTIVE_COLOR = '#8E8E93';
-
-const CAPSULE_HEIGHT = 54;
+const CAPSULE_HEIGHT = 56;
 const PADDING_VERTICAL = 5;
-const BUTTON_DIAMETER = CAPSULE_HEIGHT - PADDING_VERTICAL * 2; 
+const BUTTON_DIAMETER = CAPSULE_HEIGHT - PADDING_VERTICAL * 2; // 46
+const ICON_SIZE = 22; 
+
+const TAB_INACTIVE_WIDTH = BUTTON_DIAMETER;      
+const TAB_ACTIVE_WIDTH = BUTTON_DIAMETER + 60;   
+const PILL_GAP = 4;
+const PILL_PADDING = 5;
+
+const SMOOTH_EASE = Easing.bezier(0.25, 1, 0.5, 1);
 
 export default function AnimatedTabBar({ activeTab, onTabChange, onContactPress }: Props) {
   const { theme: t } = useTheme();
   const indicatorX = useSharedValue(0);
-  const indicatorW = useSharedValue(BUTTON_DIAMETER);
-  const [isReady, setIsReady] = useState(false);
+  const indicatorW = useSharedValue(TAB_ACTIVE_WIDTH);
 
-  const layouts = useRef<{ x: number; width: number }[]>(
-    TABS.map(() => ({ x: 0, width: 0 })),
-  );
-
-  const syncIndicator = useCallback((x: number, width: number, immediate = false) => {
-    if (width <= 0) return;
-    if (immediate) {
-      indicatorX.value = x;
-      indicatorW.value = width;
-    } else {
-      indicatorX.value = withTiming(x, { duration: 250, easing: Easing.out(Easing.quad) });
-      indicatorW.value = withTiming(width, { duration: 250, easing: Easing.out(Easing.quad) });
-    }
-  }, [indicatorX, indicatorW]);
-
-  const handleLayout = useCallback(
-    (index: number) => (e: LayoutChangeEvent) => {
-      const { x, width } = e.nativeEvent.layout;
-      layouts.current[index] = { x, width };
-
-      // Initial alignment setup on mount
-      if (activeTab === TABS[index].key && !isReady && width > 0) {
-        syncIndicator(x, width, true);
-        setIsReady(true);
-      }
-    },
-    [activeTab, isReady, syncIndicator],
-  );
+  const activeIndex = TABS.findIndex((tab) => tab.key === activeTab);
 
   useEffect(() => {
-    const activeIndex = TABS.findIndex((t) => t.key === activeTab);
-    if (activeIndex !== -1 && isReady) {
-      const layout = layouts.current[activeIndex];
-      if (layout.width > 0) {
-        syncIndicator(layout.x, layout.width, false);
-      }
+    let targetX = PILL_PADDING;
+    for (let i = 0; i < activeIndex; i++) {
+      targetX += TAB_INACTIVE_WIDTH + PILL_GAP;
     }
-  }, [activeTab, isReady, syncIndicator]);
+
+    indicatorX.value = withTiming(targetX, { duration: 280, easing: SMOOTH_EASE });
+    indicatorW.value = withTiming(TAB_ACTIVE_WIDTH, { duration: 280, easing: SMOOTH_EASE });
+  }, [activeIndex]);
 
   const indicatorStyle = useAnimatedStyle(() => ({
     position: 'absolute' as const,
     left: indicatorX.value,
     width: indicatorW.value,
     height: BUTTON_DIAMETER,
-    top: PADDING_VERTICAL,
+    // 🌟 FIXED: Centers the blue capsule perfectly inside the bar vertical axis
+    top: (CAPSULE_HEIGHT - BUTTON_DIAMETER) / 3, 
     borderRadius: BUTTON_DIAMETER / 2,
-    backgroundColor: PRIMARY,
-    opacity: isReady ? 1 : 0,
+    backgroundColor: t.PRIMARY,
   }));
+
+  const blurTint = t.isDark ? 'dark' : 'light';
 
   return (
     <View style={styles.footerContainer} pointerEvents="box-none">
-      <View style={styles.rowWrapper}>
-        <View style={[styles.pill, { backgroundColor: t.PILL_BG }]}>
+      <View style={styles.rowWrapper} pointerEvents="box-none">
+        <View style={[
+          styles.pill, { 
+            backgroundColor: t.isDark ? 'rgba(255, 255, 255, 0)' : 'rgba(56, 56, 56, 0.16)',
+            borderColor: t.isDark ? 'rgba(255, 255, 255, 0)' : 'rgba(0, 0, 0, 0)',
+            borderWidth: 1,
+          }
+        ]}>
+          <BlurView 
+            intensity={35} 
+            tint={blurTint}
+            experimentalBlurMethod="dimezisBlurView"
+            style={StyleSheet.absoluteFillObject} 
+          />
+
           <Animated.View style={indicatorStyle} />
 
-          {TABS.map((tab, i) => {
-            const isActive = activeTab === tab.key;
-            return (
-              <AnimatedTabItem
-                key={tab.key}
-                tab={tab}
-                isActive={isActive}
-                onLayout={handleLayout(i)}
-                onPress={() => onTabChange(tab.key)}
-                onDynamicMeasure={(width, x) => {
-                  if (isActive && isReady) {
-                    syncIndicator(x, width, false);
-                  }
-                }}
-              />
-            );
-          })}
+          {TABS.map((tab, i) => (
+            <AnimatedTabItem
+              key={tab.key}
+              tab={tab}
+              isActive={activeIndex === i}
+              onPress={() => onTabChange(tab.key)}
+            />
+          ))}
         </View>
 
         <View style={styles.contactContainer}>
           <AnimatedContactButton onPress={onContactPress} />
         </View>
       </View>
-
-      <View style={styles.homeIndicator} />
     </View>
   );
 }
 
 /* ── Contact Button ─────────────────────────────────── */
 function AnimatedContactButton({ onPress }: { onPress: () => void }) {
+  const { theme: t } = useTheme();
   const scale = useSharedValue(1);
   const opacity = useSharedValue(1);
 
@@ -142,7 +125,7 @@ function AnimatedContactButton({ onPress }: { onPress: () => void }) {
 
   return (
     <Animated.View
-      style={[styles.contactButton, animStyle]}
+      style={[styles.contactButton, animStyle, { backgroundColor: t.PRIMARY }]}
       onStartShouldSetResponder={() => true}
       onResponderGrant={() => {
         scale.value = withTiming(0.92, { duration: 100 });
@@ -163,63 +146,64 @@ function AnimatedContactButton({ onPress }: { onPress: () => void }) {
   );
 }
 
-/* ── Dynamic Layout Expanding Tab Item ──────────────── */
+/* ── Narrow Footprint Expanding Tab Item ────────────── */
 function AnimatedTabItem({
   tab,
   isActive,
-  onLayout,
   onPress,
-  onDynamicMeasure,
 }: {
   tab: Tab;
   isActive: boolean;
-  onLayout: (e: LayoutChangeEvent) => void;
   onPress: () => void;
-  onDynamicMeasure: (width: number, x: number) => void;
 }) {
+  const { theme: t } = useTheme();
   const pressOpacity = useSharedValue(1);
   const expansionProgress = useSharedValue(isActive ? 1 : 0);
 
   useEffect(() => {
     expansionProgress.value = withTiming(isActive ? 1 : 0, { 
-      duration: 250, 
-      easing: Easing.out(Easing.quad) 
+      duration: 280, 
+      easing: SMOOTH_EASE 
     });
-  }, [isActive, expansionProgress]);
+  }, [isActive]);
 
-  const handleItemLayout = (e: LayoutChangeEvent) => {
-    onLayout(e);
-    // Capture dynamic measurements during runtime expansions safely
-    const { width, x } = e.nativeEvent.layout;
-    if (isActive) {
-      onDynamicMeasure(width, x);
-    }
-  };
+  const containerStyle = useAnimatedStyle(() => ({
+    opacity: pressOpacity.value,
+    width: interpolate(
+      expansionProgress.value,
+      [0, 1],
+      [TAB_INACTIVE_WIDTH, TAB_ACTIVE_WIDTH],
+      Extrapolation.CLAMP
+    ),
+  }));
 
-  const containerStyle = useAnimatedStyle(() => {
-    return {
-      opacity: pressOpacity.value,
-      paddingHorizontal: interpolate(expansionProgress.value, [0, 1], [12, 16], Extrapolation.CLAMP),
-      minWidth: BUTTON_DIAMETER, 
-    };
-  });
+  const wrapperStyle = useAnimatedStyle(() => ({
+    paddingLeft: interpolate(
+      expansionProgress.value,
+      [0, 1],
+      [(TAB_INACTIVE_WIDTH - ICON_SIZE) / 2, 14], 
+      Extrapolation.CLAMP
+    ),
+  }));
 
-  const labelStyle = useAnimatedStyle(() => {
-    return {
-      opacity: expansionProgress.value,
-      maxWidth: interpolate(expansionProgress.value, [0, 1], [0, 100], Extrapolation.CLAMP),
-      transform: [
-        { 
-          scale: interpolate(expansionProgress.value, [0, 1], [0.85, 1], Extrapolation.CLAMP) 
-        }
-      ],
-    };
-  });
+  const labelStyle = useAnimatedStyle(() => ({
+    opacity: expansionProgress.value,
+    maxWidth: interpolate(
+      expansionProgress.value,
+      [0, 1],
+      [0, 56],
+      Extrapolation.CLAMP
+    ),
+    transform: [
+      { 
+        scale: interpolate(expansionProgress.value, [0, 1], [0.9, 1], Extrapolation.CLAMP) 
+      }
+    ],
+  }));
 
   return (
     <Animated.View
       style={[styles.tabItem, containerStyle]}
-      onLayout={handleItemLayout}
       onStartShouldSetResponder={() => true}
       onResponderGrant={() => {
         pressOpacity.value = withTiming(0.7, { duration: 80 });
@@ -232,15 +216,19 @@ function AnimatedTabItem({
         pressOpacity.value = withTiming(1, { duration: 150 });
       }}
     >
-      <Ionicons
-        name={isActive ? tab.activeIcon : tab.icon}
-        size={20}
-        color={isActive ? '#fff' : INACTIVE_COLOR}
-      />
-      <Animated.View style={[styles.labelWrapper, labelStyle]}>
-        <Animated.Text numberOfLines={1} style={styles.tabLabel}>
-          {tab.label}
-        </Animated.Text>
+      <Animated.View style={[styles.tabContentWrapper, wrapperStyle]}>
+        <View style={styles.iconBox}>
+          <Ionicons
+            name={isActive ? tab.activeIcon : tab.icon}
+            size={ICON_SIZE}
+            color={isActive ? '#fff' : t.TEXT2}
+          />
+        </View>
+        <Animated.View style={[styles.labelWrapper, labelStyle]}>
+          <Animated.Text numberOfLines={1} style={styles.tabLabel}>
+            {tab.label}
+          </Animated.Text>
+        </Animated.View>
       </Animated.View>
     </Animated.View>
   );
@@ -253,10 +241,10 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    height: 110,
+    height: 120,
     alignItems: 'center',
     justifyContent: 'flex-end',
-    paddingBottom: 8,
+    paddingBottom: 38, 
   },
   rowWrapper: {
     flexDirection: 'row',
@@ -264,39 +252,50 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     width: '100%',
     paddingHorizontal: 16,
-    gap: 12, 
+    gap: 10, 
   },
   pill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
     height: CAPSULE_HEIGHT,
     borderRadius: CAPSULE_HEIGHT / 2,
-    paddingVertical: PADDING_VERTICAL,
-    paddingHorizontal: 5,
+    paddingHorizontal: PILL_PADDING,
+    overflow: 'hidden',
+    gap: PILL_GAP,
+    
     shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.08,
-    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.04,
+    shadowRadius: 12,
     elevation: 12,
   },
   tabItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
     height: BUTTON_DIAMETER,
+    justifyContent: 'center',
     borderRadius: BUTTON_DIAMETER / 2,
     overflow: 'hidden', 
   },
+  tabContentWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+  },
+  iconBox: {
+    width: ICON_SIZE,
+    height: ICON_SIZE,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   labelWrapper: {
+    marginLeft: 6,
+    justifyContent: 'center',
     overflow: 'hidden',
   },
   tabLabel: {
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 12.5,
+    fontWeight: '700',
     color: '#FFFFFF',
-    letterSpacing: -0.1,
-    marginLeft: 6,
+    letterSpacing: -0.2,
   },
   contactContainer: {
     justifyContent: 'center',
@@ -306,22 +305,12 @@ const styles = StyleSheet.create({
     width: BUTTON_DIAMETER,
     height: BUTTON_DIAMETER,
     borderRadius: BUTTON_DIAMETER / 2, 
-    backgroundColor: PRIMARY,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.12,
-    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
     elevation: 12,
-  },
-  homeIndicator: {
-    width: 134,
-    height: 5,
-    backgroundColor: '#000000',
-    borderRadius: 3,
-    opacity: 0.15,
-    marginTop: 14,
-    marginBottom: 4,
   },
 });

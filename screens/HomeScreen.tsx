@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   FlatList,
   Image,
+  Linking,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,7 +18,7 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated';
 import type { TabKey } from '../lib/types';
-import { useServices, useRecentWorks, useTestimonials } from '../lib/useData';
+import { useServices, useRecentWorks, useTestimonials, useAppSettings } from '../lib/useData';
 import { useTheme } from '../lib/ThemeContext';
 
 const CAT_COLORS: Record<string, string> = {
@@ -59,7 +60,21 @@ export default function HomeScreen({ onNavigate }: Props) {
   const { data: services } = useServices();
   const { data: recentWorks } = useRecentWorks();
   const { data: testimonials } = useTestimonials();
+  const { settings } = useAppSettings();
   const carouselRef = useRef<FlatList>(null);
+
+  const handleViewPortfolio = async () => {
+    try {
+      const supported = await Linking.canOpenURL('https://mystx.space');
+      if (supported) {
+        await Linking.openURL('https://mystx.space');
+      } else {
+        console.log("Can't open URL: https://mystx.space");
+      }
+    } catch (error) {
+      console.error('Error opening portfolio URL:', error);
+    }
+  };
 
   const expertiseItems = services.slice(0, 4);
 
@@ -88,9 +103,40 @@ export default function HomeScreen({ onNavigate }: Props) {
 
   return (
     <View style={[styles.container, { backgroundColor: t.BG }]}>
-      {/* Hero */}
+      {/* Hero with Logo */}
       <View style={StyleSheet.absoluteFillObject}>
-        <View style={{ paddingTop: 30, flex: 1 }}>
+        {/* Logo Image with Overlay */}
+        <View style={styles.logoContainer}>
+          {settings.brand_logo_url ? (
+            <Image 
+              source={{ uri: settings.brand_logo_url }} 
+              style={[
+                styles.logoImage, 
+                { 
+                  width: 300,
+                  height: 150,
+                }
+              ]} 
+              resizeMode="contain" 
+            />
+          ) : (
+            <Image 
+              source={require('../assets/stX.png')} 
+              style={[
+                styles.logoImage, 
+                { 
+                  tintColor: t.isDark ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.9)',
+                  width: 300,
+                  height: 150,
+                }
+              ]} 
+              resizeMode="contain" 
+            />
+          )}
+        </View>
+
+        {/* Hero Content (moved down) */}
+        <View style={{ paddingTop: 140, flex: 1 }}>
           <View style={styles.hero}>
             <FadeInSmall delay={30}>
               <View style={[styles.badge, { backgroundColor: t.SEC_CONT }]}>
@@ -116,7 +162,11 @@ export default function HomeScreen({ onNavigate }: Props) {
                     <Text style={styles.heroBtnPrimaryText}>Book Now</Text>
                   </LinearGradient>
                 </TouchableOpacity>
-                <TouchableOpacity style={[styles.heroBtnSecondary, { backgroundColor: t.SURF_LOW, borderColor: t.PRIMARY + '18' }]} activeOpacity={0.7}>
+                <TouchableOpacity 
+                  style={[styles.heroBtnSecondary, { backgroundColor: t.SURF_LOW, borderColor: t.PRIMARY + '18' }]} 
+                  activeOpacity={0.7}
+                  onPress={handleViewPortfolio}
+                >
                   <Text style={[styles.heroBtnSecText, { color: t.PRIMARY }]}>View Portfolio</Text>
                 </TouchableOpacity>
               </View>
@@ -127,7 +177,7 @@ export default function HomeScreen({ onNavigate }: Props) {
 
       {/* Content Sheet */}
       <ScrollView style={styles.sheet} contentContainerStyle={styles.sheetContent} showsVerticalScrollIndicator={false}>
-        <View style={{ height: 340 }} />
+        <View style={{ height: 420 }} />
 
         <View style={[styles.sheetPanel, { backgroundColor: t.BG, borderTopColor: t.isDark ? '#2E3244' : '#E0E4E7' }]}>
           <View style={styles.dragHandleWrap}>
@@ -276,6 +326,19 @@ function ExpertiseCard({ item, large, t }: { item: any; large?: boolean; t: any 
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  logoContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 150,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logoImage: {
+    width: '100%',
+    height: '100%',
+  },
   header: {
     position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10,
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',

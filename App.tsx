@@ -17,6 +17,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { TabKey, Service } from './lib/types';
 import { ThemeProvider, useTheme } from './lib/ThemeContext';
 import { useAuth } from './lib/useAuth';
+import { useAppSettings } from './lib/useData';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, {
   useSharedValue,
@@ -37,11 +38,24 @@ import OnboardingScreen    from './screens/OnboardingScreen';
 const ONBOARDING_KEY = '@onboarding_completed';
 
 // Contact Popup Component with Animation
-function ContactPopup({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+function ContactPopup({ 
+  visible, 
+  onClose, 
+  whatsappNumber, 
+  emailAddress 
+}: { 
+  visible: boolean; 
+  onClose: () => void;
+  whatsappNumber: string | null;
+  emailAddress: string | null;
+}) {
   const { theme } = useTheme();
   const contentOpacity = useSharedValue(0);
   const contentScale = useSharedValue(0.8);
   const overlayOpacity = useSharedValue(0);
+
+  // Don't show popup if both are null
+  if (!whatsappNumber && !emailAddress) return null;
 
   useEffect(() => {
     if (visible) {
@@ -65,8 +79,8 @@ function ContactPopup({ visible, onClose }: { visible: boolean; onClose: () => v
   }));
 
   const handleWhatsApp = async () => {
-    const phoneNumber = '919493562061'; // Add country code
-    const url = `whatsapp://send?phone=${phoneNumber}`;
+    if (!whatsappNumber) return;
+    const url = `whatsapp://send?phone=${whatsappNumber}`;
     try {
       await Linking.openURL(url);
     } catch (error) {
@@ -75,8 +89,8 @@ function ContactPopup({ visible, onClose }: { visible: boolean; onClose: () => v
   };
 
   const handleEmail = async () => {
-    const email = 'Rahuldevreddy01@gmail.com';
-    const url = `mailto:${email}`;
+    if (!emailAddress) return;
+    const url = `mailto:${emailAddress}`;
     try {
       await Linking.openURL(url);
     } catch (error) {
@@ -96,22 +110,26 @@ function ContactPopup({ visible, onClose }: { visible: boolean; onClose: () => v
         <Animated.View style={[styles.popupOverlay, overlayAnimatedStyle]}>
           <TouchableWithoutFeedback>
             <Animated.View style={[styles.popupContainer, { backgroundColor: theme.SURFACE }, contentAnimatedStyle]}>
-              <View style={styles.optionContainer}>
-                <TouchableWithoutFeedback onPress={handleWhatsApp}>
-                  <View style={[styles.optionButton, { backgroundColor: '#25D366' }]}>
-                    <Ionicons name="logo-whatsapp" size={36} color="#fff" />
-                  </View>
-                </TouchableWithoutFeedback>
-                <Text style={[styles.optionLabel, { color: theme.ON_SURFACE }]}>WhatsApp</Text>
-              </View>
-              <View style={styles.optionContainer}>
-                <TouchableWithoutFeedback onPress={handleEmail}>
-                  <View style={[styles.optionButton, { backgroundColor: theme.PRIMARY }]}>
-                    <Ionicons name="mail" size={36} color="#fff" />
-                  </View>
-                </TouchableWithoutFeedback>
-                <Text style={[styles.optionLabel, { color: theme.ON_SURFACE }]}>Email</Text>
-              </View>
+              {whatsappNumber && (
+                <View style={styles.optionContainer}>
+                  <TouchableWithoutFeedback onPress={handleWhatsApp}>
+                    <View style={[styles.optionButton, { backgroundColor: '#25D366' }]}>
+                      <Ionicons name="logo-whatsapp" size={36} color="#fff" />
+                    </View>
+                  </TouchableWithoutFeedback>
+                  <Text style={[styles.optionLabel, { color: theme.ON_SURFACE }]}>WhatsApp</Text>
+                </View>
+              )}
+              {emailAddress && (
+                <View style={styles.optionContainer}>
+                  <TouchableWithoutFeedback onPress={handleEmail}>
+                    <View style={[styles.optionButton, { backgroundColor: theme.PRIMARY }]}>
+                      <Ionicons name="mail" size={36} color="#fff" />
+                    </View>
+                  </TouchableWithoutFeedback>
+                  <Text style={[styles.optionLabel, { color: theme.ON_SURFACE }]}>Email</Text>
+                </View>
+              )}
             </Animated.View>
           </TouchableWithoutFeedback>
         </Animated.View>
@@ -170,11 +188,14 @@ function MainApp({
 
 function AppInner() {
   const { session, loading } = useAuth();
+  const { settings } = useAppSettings();
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showAuth, setShowAuth] = useState(false);
   const [appLoading, setAppLoading] = useState(true);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [showContactPopup, setShowContactPopup] = useState(false);
+  const whatsappNumber = settings.contact_whatsapp || '919493562061';
+  const emailAddress = settings.contact_email || 'sanjayanand0509@gmail.com';
 
   useEffect(() => {
     const checkOnboarding = async () => {
@@ -268,17 +289,26 @@ function AppInner() {
     return <AuthScreen onSuccess={() => {}} onBack={() => {}} />;
   }
 
+  // Only show contact button if at least one contact method exists
+  const handleContactPress = () => {
+    if (whatsappNumber || emailAddress) {
+      setShowContactPopup(true);
+    }
+  };
+
   return (
     <>
       <MainApp 
         onSignOut={handleSignOut} 
         selectedService={selectedService}
         setSelectedService={setSelectedService}
-        onContactPress={() => setShowContactPopup(true)}
+        onContactPress={handleContactPress}
       />
       <ContactPopup 
         visible={showContactPopup} 
         onClose={() => setShowContactPopup(false)} 
+        whatsappNumber={whatsappNumber}
+        emailAddress={emailAddress}
       />
     </>
   );

@@ -8,6 +8,7 @@ import {
   Alert,
   Switch,
   Image,
+  Linking,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, {
@@ -93,10 +94,12 @@ export default function ProfileScreen({ onSignOut }: ProfileScreenProps) {
   const t = theme;
 
   const MENU_ITEMS = [
-    { id: '1', icon: 'calendar-outline',  title: 'My Bookings',     sub: 'Manage consultations',    accent: t.PRIMARY,    accentBg: t.PRIMARY + '18' },
-    { id: '2', icon: 'stats-chart-outline', title: 'Course Progress', sub: '78% Completed',           accent: '#4A5A6F',    accentBg: t.TER_FIXED },
-    { id: '3', icon: 'help-circle-outline', title: 'Support',         sub: '24/7 Priority Concierge', accent: t.ERR_COLOR,  accentBg: t.ERR_CONT },
+    { id: '1', icon: 'help-circle-outline', title: 'Support',         sub: '24/7 Priority Concierge', accent: t.ERR_COLOR,  accentBg: t.ERR_CONT },
   ];
+
+  const handleSupport = () => {
+    Linking.openURL('mailto:sanjayanand0509@gmail.com');
+  };
 
   const handleSignOut = () => {
     Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
@@ -194,7 +197,7 @@ export default function ProfileScreen({ onSignOut }: ProfileScreenProps) {
         <View style={styles.menuGrid}>
           {MENU_ITEMS.map((item, i) => (
             <FadeInUp key={item.id} delay={260 + i * 40} waitForLoading={true}>
-              <TouchableOpacity style={[styles.menuItem, { backgroundColor: t.SURFACE }]} activeOpacity={0.7}>
+              <TouchableOpacity style={[styles.menuItem, { backgroundColor: t.SURFACE }]} activeOpacity={0.7} onPress={handleSupport}>
                 <View style={[styles.menuIconWrap, { backgroundColor: item.accentBg }]}>
                   <Ionicons name={item.icon as any} size={20} color={item.accent} />
                 </View>

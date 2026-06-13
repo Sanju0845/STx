@@ -16,16 +16,13 @@ import Animated, {
   withTiming,
   Easing,
 } from 'react-native-reanimated';
-import { useServices, useTestimonials } from '../lib/useData';
+import { useServices } from '../lib/useData';
 import type { Service, ServiceCategory } from '../lib/types';
 import { SERVICE_CATEGORY_LABELS } from '../lib/types';
 import { useTheme } from '../lib/ThemeContext';
 
-const PRIMARY = '#004CD2';
-const TER_CONT = '#627289';
-
 const CAT_COLORS: Record<ServiceCategory, string> = {
-  web_static: PRIMARY,
+  web_static: '#004CD2',
   web_dynamic: '#627289',
   web_fullstack: '#38485D',
   web_ecommerce: '#1B63FF',
@@ -39,36 +36,29 @@ interface Props {
   onServiceSelect: (service: Service) => void;
 }
 
-function FadeInSmall({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
+function FadeInUp({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
   const opacity = useSharedValue(0);
-  const translateY = useSharedValue(6);
+  const translateY = useSharedValue(10);
 
   React.useEffect(() => {
     setTimeout(() => {
-      opacity.value = withTiming(1, {
-        duration: 220,
-        easing: Easing.out(Easing.quad),
-      });
-      translateY.value = withTiming(0, {
-        duration: 220,
-        easing: Easing.out(Easing.quad),
-      });
+      opacity.value = withTiming(1, { duration: 220, easing: Easing.out(Easing.quad) });
+      translateY.value = withTiming(0, { duration: 220, easing: Easing.out(Easing.quad) });
     }, delay);
-  }, [opacity, translateY]);
+  }, []);
 
-  const animatedStyle = useAnimatedStyle(() => ({
+  const style = useAnimatedStyle(() => ({
     opacity: opacity.value,
     transform: [{ translateY: translateY.value }],
   }));
 
-  return <Animated.View style={animatedStyle}>{children}</Animated.View>;
+  return <Animated.View style={style}>{children}</Animated.View>;
 }
 
 export default function ServicesScreen({ onServiceSelect }: Props) {
   const [activeFilter, setActiveFilter] = useState('All Services');
   const [search, setSearch] = useState('');
   const { data: services } = useServices();
-  const { data: testimonials } = useTestimonials();
   const { theme: t } = useTheme();
 
   // Extract unique categories from services (filter out any undefined/null)
@@ -102,16 +92,16 @@ export default function ServicesScreen({ onServiceSelect }: Props) {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
         {/* ── Title Section ── */}
         <View style={styles.titleSection}>
-          <FadeInSmall delay={50}>
+          <FadeInUp delay={50}>
             <Text style={[styles.pageTitle, { color: t.ON_SURFACE }]}>Our Services</Text>
-          </FadeInSmall>
-          <FadeInSmall delay={80}>
+          </FadeInUp>
+          <FadeInUp delay={80}>
             <Text style={[styles.pageSub, { color: t.TEXT2 }]}>Tailored digital solutions for visionary teams.</Text>
-          </FadeInSmall>
+          </FadeInUp>
         </View>
 
         {/* ── Search ── */}
-        <FadeInSmall delay={110}>
+        <FadeInUp delay={110}>
           <View style={[styles.searchWrap, { backgroundColor: t.SURF_LOW }]}>
             <Ionicons name="search-outline" size={18} color={t.OUTLINE} style={styles.searchIcon} />
             <TextInput
@@ -122,10 +112,10 @@ export default function ServicesScreen({ onServiceSelect }: Props) {
               onChangeText={setSearch}
             />
           </View>
-        </FadeInSmall>
+        </FadeInUp>
 
         {/* ── Filter Chips ── */}
-        <FadeInSmall delay={140}>
+        <FadeInUp delay={140}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
             {filters.map((filter) => {
               const displayLabel = filter === 'All Services' ? 'All Services' : getCategoryLabel(filter as ServiceCategory);
@@ -142,7 +132,7 @@ export default function ServicesScreen({ onServiceSelect }: Props) {
               );
             })}
           </ScrollView>
-        </FadeInSmall>
+        </FadeInUp>
 
         {/* ── Service Cards Grid ── */}
         <View style={styles.grid}>
@@ -150,7 +140,7 @@ export default function ServicesScreen({ onServiceSelect }: Props) {
             const accent = CAT_COLORS[svc.category] || t.PRIMARY;
             const categoryLabel = getCategoryLabel(svc.category);
             return (
-              <FadeInSmall key={svc.id} delay={170 + index * 40}>
+              <FadeInUp key={svc.id} delay={170 + index * 40}>
                 <TouchableOpacity
                   style={[styles.serviceCard, { backgroundColor: t.SURFACE, borderColor: t.SURF_LOW }]}
                   activeOpacity={0.92}
@@ -199,7 +189,7 @@ export default function ServicesScreen({ onServiceSelect }: Props) {
                     </View>
                   </View>
                 </TouchableOpacity>
-              </FadeInSmall>
+              </FadeInUp>
             );
           })}
         </View>
@@ -213,24 +203,6 @@ export default function ServicesScreen({ onServiceSelect }: Props) {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { paddingBottom: 20 },
-
-  /* Header */
-  header: {
-    position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10,
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: 16, paddingVertical: 8,
-  },
-  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 6,
-    paddingHorizontal: 16, paddingVertical: 10,
-    borderRadius: 20, borderWidth: 1,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12, elevation: 8,
-  },
-  headerButton: {
-    width: 44, height: 44, borderRadius: 22,
-    alignItems: 'center', justifyContent: 'center', borderWidth: 1,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12, elevation: 8,
-  },
-  brand: { fontSize: 18, fontWeight: '800', letterSpacing: -0.5 },
 
   /* Title */
   titleSection: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 14 },
@@ -273,29 +245,4 @@ const styles = StyleSheet.create({
   priceWrap: { alignItems: 'flex-end' },
   cardPrice: { fontSize: 18, fontWeight: '700' },
   priceSuffix: { fontSize: 10, fontWeight: '600', marginTop: 1 },
-
-  sectionCard: {
-    borderRadius: 18, padding: 20, marginHorizontal: 20, marginBottom: 14, marginTop: 4,
-    shadowColor: '#0F172A', shadowOpacity: 0.04, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 2,
-  },
-  sectionIconWrap: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
-  sectionCardTitle: { fontSize: 20, fontWeight: '700' },
-  sectionCardSub: { fontSize: 13, marginTop: 3 },
-  mobileAppItem: { borderRadius: 12, padding: 14 },
-  mobileAppTitle: { fontSize: 13, fontWeight: '700' },
-  mobileAppDesc: { fontSize: 11, marginTop: 3 },
-  darkBtn: { marginTop: 18, paddingVertical: 14, borderRadius: 14, alignItems: 'center' },
-  darkBtnText: { fontWeight: '600', fontSize: 14 },
-  proxyCard: { marginHorizontal: 20, marginBottom: 14, borderRadius: 18, padding: 22, overflow: 'hidden' },
-  proxyBadge: { alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 8, marginBottom: 10 },
-  proxyBadgeText: { color: '#fff', fontSize: 9, fontWeight: '800', letterSpacing: 0.5 },
-  proxyTitle: { fontSize: 22, fontWeight: '700', color: '#fff', marginBottom: 8 },
-  proxySub: { fontSize: 13, color: 'rgba(255,255,255,0.9)', lineHeight: 19, marginBottom: 18 },
-  proxyFeature: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 20 },
-  proxyFeatureText: { color: '#fff', fontSize: 12, fontWeight: '700' },
-  proxyBtn: { alignSelf: 'flex-start', backgroundColor: '#fff', paddingHorizontal: 24, paddingVertical: 10, borderRadius: 12 },
-  proxyBtnText: { color: TER_CONT, fontWeight: '700', fontSize: 13 },
-  tagsRow: { flexDirection: 'row', gap: 6, marginTop: 12 },
-  tag: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
-  tagText: { fontSize: 10, fontWeight: '700' },
 });

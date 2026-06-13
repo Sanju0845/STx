@@ -6,7 +6,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   TextInput,
-  Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,7 +15,7 @@ import Animated, {
   withTiming,
   Easing,
 } from 'react-native-reanimated';
-import { useCourses, useTestimonials } from '../lib/useData';
+import { useCourses } from '../lib/useData';
 import type { Course } from '../lib/types';
 import { COURSE_CATEGORY_LABELS } from '../lib/types';
 import { useTheme } from '../lib/ThemeContext';
@@ -28,26 +27,25 @@ const CAT_COLORS: Record<string, string> = {
   specialized: '#fff',
 };
 
-function FadeInSmall({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
+function FadeInUp({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
   const opacity = useSharedValue(0);
-  const translateY = useSharedValue(6);
+  const translateY = useSharedValue(10);
   React.useEffect(() => {
     setTimeout(() => {
       opacity.value = withTiming(1, { duration: 220, easing: Easing.out(Easing.quad) });
       translateY.value = withTiming(0, { duration: 220, easing: Easing.out(Easing.quad) });
     }, delay);
   }, []);
-  const animatedStyle = useAnimatedStyle(() => ({
+  const style = useAnimatedStyle(() => ({
     opacity: opacity.value,
     transform: [{ translateY: translateY.value }],
   }));
-  return <Animated.View style={animatedStyle}>{children}</Animated.View>;
+  return <Animated.View style={style}>{children}</Animated.View>;
 }
 
 export default function CoursesScreen() {
   const [search, setSearch] = useState('');
   const { data: courses } = useCourses();
-  const { data: testimonials } = useTestimonials();
   const { theme: t } = useTheme();
 
   // Extract unique categories from courses
@@ -77,16 +75,16 @@ export default function CoursesScreen() {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
         {/* Title */}
         <View style={styles.titleSection}>
-          <FadeInSmall delay={50}>
+          <FadeInUp delay={50}>
             <Text style={[styles.pageTitle, { color: t.ON_SURFACE }]}>Master Your Craft</Text>
-          </FadeInSmall>
-          <FadeInSmall delay={80}>
+          </FadeInUp>
+          <FadeInUp delay={80}>
             <Text style={[styles.pageSub, { color: t.TEXT2 }]}>Expert-led courses for digital visionary leaders.</Text>
-          </FadeInSmall>
+          </FadeInUp>
         </View>
 
         {/* Search */}
-        <FadeInSmall delay={110}>
+        <FadeInUp delay={110}>
           <View style={[styles.searchWrap, { backgroundColor: t.SURF_LOW }]}>
             <Ionicons name="search-outline" size={18} color={t.OUTLINE} style={styles.searchIcon} />
             <TextInput
@@ -97,10 +95,10 @@ export default function CoursesScreen() {
               onChangeText={setSearch}
             />
           </View>
-        </FadeInSmall>
+        </FadeInUp>
 
         {/* Filter Chips */}
-        <FadeInSmall delay={140}>
+        <FadeInUp delay={140}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
             {filters.map((filter) => {
               const displayLabel = filter === 'All Courses' ? 'All Courses' : getCategoryLabel(filter);
@@ -117,7 +115,7 @@ export default function CoursesScreen() {
               );
             })}
           </ScrollView>
-        </FadeInSmall>
+        </FadeInUp>
 
         {/* Course Cards */}
         <View style={styles.grid}>
@@ -127,7 +125,7 @@ export default function CoursesScreen() {
             const gradColor1 = course.grad_color_1 || t.PRIMARY;
             const gradColor2 = course.grad_color_2 || '#003399';
             return (
-              <FadeInSmall key={course.id} delay={170 + index * 40}>
+              <FadeInUp key={course.id} delay={170 + index * 40}>
                 <TouchableOpacity style={[styles.courseCard, { backgroundColor: t.SURFACE, borderColor: t.SURF_LOW }]} activeOpacity={0.92}>
                   {course.is_special ? (
                     <LinearGradient colors={[gradColor1, gradColor2]} style={styles.courseImg}>
@@ -167,47 +165,10 @@ export default function CoursesScreen() {
                     </View>
                   </View>
                 </TouchableOpacity>
-              </FadeInSmall>
+              </FadeInUp>
             );
           })}
         </View>
-
-        {/* Testimonials */}
-        {testimonials.length > 0 && (
-          <FadeInSmall delay={450}>
-            <View style={styles.testimonialsSection}>
-              <Text style={[styles.sectionTitle, { color: t.ON_SURFACE }]}>What Students Say</Text>
-              <Text style={[styles.sectionSub, { color: t.TEXT2 }]}>Success stories from our learners</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.testimonialRow}>
-                {testimonials.map((testimonial, idx) => (
-                  <FadeInSmall key={testimonial.id} delay={480 + idx * 40}>
-                    <View style={[styles.testimonialCard, { backgroundColor: t.SURFACE, borderColor: t.OUTLINE + '30' }]}>
-                      <View style={styles.testimonialHeader}>
-                        <View style={[styles.testimonialAvatar, { backgroundColor: t.PRIMARY + '18' }]}>
-                          {testimonial.avatar_url ? (
-                            <Image source={{ uri: testimonial.avatar_url }} style={styles.testimonialAvatarImage} />
-                          ) : (
-                            <Ionicons name="person" size={20} color={t.PRIMARY} />
-                          )}
-                        </View>
-                        <View>
-                          <Text style={[styles.testimonialName, { color: t.ON_SURFACE }]}>{testimonial.name}</Text>
-                          <Text style={[styles.testimonialRole, { color: t.TEXT2 }]}>{testimonial.role || 'Student'}</Text>
-                        </View>
-                      </View>
-                      <Text style={[styles.testimonialText, { color: t.TEXT2 }]} numberOfLines={3}>{testimonial.text}</Text>
-                      <View style={styles.starsRow}>
-                        {Array.from({ length: testimonial.rating }, (_, i) => (
-                          <Ionicons key={i} name="star" size={14} color="#F59E0B" />
-                        ))}
-                      </View>
-                    </View>
-                  </FadeInSmall>
-                ))}
-              </ScrollView>
-            </View>
-          </FadeInSmall>
-        )}
 
         <View style={{ height: 140 }} />
       </ScrollView>
@@ -218,22 +179,6 @@ export default function CoursesScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { paddingBottom: 20 },
-  header: {
-    position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10,
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: 16, paddingVertical: 8,
-  },
-  headerLeft: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, borderWidth: 1,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12, elevation: 8,
-  },
-  headerButton: {
-    width: 44, height: 44, borderRadius: 22,
-    alignItems: 'center', justifyContent: 'center', borderWidth: 1,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12, elevation: 8,
-  },
-  brand: { fontSize: 18, fontWeight: '800', letterSpacing: -0.5 },
   titleSection: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 16 },
   pageTitle: { fontSize: 24, fontWeight: '700' },
   pageSub: { fontSize: 13, marginTop: 4 },
@@ -264,18 +209,4 @@ const styles = StyleSheet.create({
   metaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   metaText: { fontSize: 11, fontWeight: '600' },
   coursePrice: { fontSize: 18, fontWeight: '700' },
-  testimonialsSection: { marginTop: 24, paddingHorizontal: 20 },
-  sectionTitle: { fontSize: 18, fontWeight: '700' },
-  sectionSub: { fontSize: 13, marginTop: 2, marginBottom: 14 },
-  testimonialRow: { gap: 12, paddingRight: 20 },
-  testimonialCard: { width: 260, borderRadius: 16, padding: 16, borderWidth: 1 },
-  testimonialHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 10 },
-  testimonialAvatar: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
-  testimonialAvatarImage: { width: 36, height: 36, borderRadius: 18 },
-  testimonialName: { fontSize: 13, fontWeight: '700' },
-  testimonialRole: { fontSize: 11 },
-  testimonialText: { fontSize: 12, lineHeight: 18, marginBottom: 8 },
-  starsRow: { flexDirection: 'row', gap: 2 },
 });
-
-

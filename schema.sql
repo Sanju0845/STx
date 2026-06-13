@@ -1,10 +1,28 @@
 -- ============================================================
--- DIGITAL AGENCY — Full Supabase SQL Schema
+-- DIGITAL AGENCY — Full Supabase SQL Schema (SAFE TO RUN MULTIPLE TIMES)
 -- Run this in: Supabase Dashboard → SQL Editor → New Query
 -- ============================================================
 
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- ============================================================
+-- APP SETTINGS TABLE (for contact info and more)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS app_settings (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  key TEXT UNIQUE NOT NULL,
+  value TEXT,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Enable RLS (safe even if already enabled)
+ALTER TABLE app_settings ENABLE ROW LEVEL SECURITY;
+
+-- Drop policy if it exists, then create it
+DROP POLICY IF EXISTS "App settings are viewable by everyone." ON app_settings;
+CREATE POLICY "App settings are viewable by everyone." ON app_settings FOR SELECT USING (true);
 
 -- ────────────────────────────────────────────────────────────
 -- 1. PROFILES (extends Supabase auth.users)
@@ -33,10 +51,18 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- Drop trigger if exists before recreating
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- Profiles policies (drop first if exist)
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public profiles are viewable by everyone." ON profiles;
+DROP POLICY IF EXISTS "Users can update own profile." ON profiles;
+CREATE POLICY "Public profiles are viewable by everyone." ON profiles FOR SELECT USING (true);
+CREATE POLICY "Users can update own profile." ON profiles FOR UPDATE USING (auth.uid() = id);
 
 -- ────────────────────────────────────────────────────────────
 -- 2. SERVICES
@@ -58,6 +84,11 @@ CREATE TABLE IF NOT EXISTS services (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
+-- Services policies
+ALTER TABLE services ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Services are viewable by everyone." ON services;
+CREATE POLICY "Services are viewable by everyone." ON services FOR SELECT USING (true);
+
 -- ────────────────────────────────────────────────────────────
 -- 3. RECENT WORKS
 -- ────────────────────────────────────────────────────────────
@@ -73,6 +104,11 @@ CREATE TABLE IF NOT EXISTS recent_works (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
+-- Recent works policies
+ALTER TABLE recent_works ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Recent works are viewable by everyone." ON recent_works;
+CREATE POLICY "Recent works are viewable by everyone." ON recent_works FOR SELECT USING (true);
+
 -- ────────────────────────────────────────────────────────────
 -- 4. TESTIMONIALS
 -- ────────────────────────────────────────────────────────────
@@ -87,6 +123,11 @@ CREATE TABLE IF NOT EXISTS testimonials (
   sort_order INTEGER DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT now()
 );
+
+-- Testimonials policies
+ALTER TABLE testimonials ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Testimonials are viewable by everyone." ON testimonials;
+CREATE POLICY "Testimonials are viewable by everyone." ON testimonials FOR SELECT USING (true);
 
 -- ────────────────────────────────────────────────────────────
 -- 5. COURSES
@@ -109,28 +150,14 @@ CREATE TABLE IF NOT EXISTS courses (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- ────────────────────────────────────────────────────────────
--- 6. ROW LEVEL SECURITY
--- ────────────────────────────────────────────────────────────
-ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE services ENABLE ROW LEVEL SECURITY;
-ALTER TABLE recent_works ENABLE ROW LEVEL SECURITY;
-ALTER TABLE testimonials ENABLE ROW LEVEL SECURITY;
+-- Courses policies
 ALTER TABLE courses ENABLE ROW LEVEL SECURITY;
-
--- Profiles policies
-CREATE POLICY "Public profiles are viewable by everyone." ON profiles FOR SELECT USING (true);
-CREATE POLICY "Users can update own profile." ON profiles FOR UPDATE USING (auth.uid() = id);
-
--- Public read policies for all content tables
-CREATE POLICY "Services are viewable by everyone." ON services FOR SELECT USING (true);
-CREATE POLICY "Recent works are viewable by everyone." ON recent_works FOR SELECT USING (true);
-CREATE POLICY "Testimonials are viewable by everyone." ON testimonials FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Courses are viewable by everyone." ON courses;
 CREATE POLICY "Courses are viewable by everyone." ON courses FOR SELECT USING (true);
 
--- ────────────────────────────────────────────────────────────
--- 7. SEED DATA
--- ────────────────────────────────────────────────────────────
+-- ============================================================
+-- DEFAULT DATA (SAFE - uses ON CONFLICT DO NOTHING)
+-- ============================================================
 INSERT INTO services (title, description, category, price_start, price_end, duration, icon_name, features, tech_stack, is_active, sort_order) VALUES 
   ('Mobile App Development', 'Custom iOS & Android apps built with React Native / Expo. Full-cycle from design to deployment.', 'mobile_app', 15000, 80000, '4-12 weeks', 'phone-portrait', ARRAY['UI/UX Design', 'Cross-Platform', 'Push Notifications', 'Offline Support'], ARRAY['React Native', 'Expo', 'TypeScript'], true, 1),
   ('Website Development', 'Responsive websites & web apps. Landing pages, e-commerce, dashboards — you name it.', 'web_fullstack', 8000, 50000, '2-8 weeks', 'globe', ARRAY['Responsive Design', 'SEO Optimized', 'Fast Performance', 'Admin Panel'], ARRAY['React', 'Next.js', 'Tailwind'], true, 2),
@@ -153,3 +180,12 @@ INSERT INTO courses (title, description, category, price, duration, students_cou
   ('Backend Development with Node.js', 'Learn server‑side development, APIs, databases, and authentication.', 'backend', 6499, '6 weeks', 98, 'server', '#8B5CF6', '#7C3AED', false, true, 5),
   ('Digital Agency Starter Kit', 'Complete package: templates, design system, and training to launch your agency fast.', 'specialized', 14999, 'Self-paced', 45, 'rocket', '#EC4899', '#DB2777', true, true, 6)
 ON CONFLICT DO NOTHING;
+
+-- ============================================================
+-- DEFAULT CONTACT & BRAND SETTINGS
+-- ============================================================
+INSERT INTO app_settings (key, value) VALUES 
+  ('contact_whatsapp', '919493562061'),  -- Default WhatsApp number (with country code)
+  ('contact_email', 'sanjayanand0509@gmail.com'),  -- Default email
+  ('brand_logo_url', NULL)  -- Optional: Set your logo URL here, or leave NULL to use local image
+ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
