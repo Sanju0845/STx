@@ -1,0 +1,17 @@
+name: Keep Supabase Alive
+
+on:
+  schedule:
+    - cron: '0 0 */3 * *'  # Every 3 days at midnight UTC
+  workflow_dispatch:
+
+jobs:
+  ping-supabase:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase app_settings table
+        run: |
+          echo "Pinging Supabase at ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}..."
+          curl -s -X GET "${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}/rest/v1/app_settings?limit=1" \
+            -H "apikey: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}" \
+            -H "Content-Type: application/json" && echo " ✓ Success" || echo " ✗ Failed"
